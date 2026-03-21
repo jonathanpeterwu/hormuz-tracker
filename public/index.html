@@ -39,6 +39,8 @@ tr:last-child td{border-bottom:none}
 .pml{display:flex;flex-direction:column;gap:6px}
 .pmr{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r)}
 .pmq{flex:1;font-size:13px;color:var(--text2);line-height:1.4}
+.est-cell{font-size:12px;line-height:1.3}.est-px{font-weight:500}.est-chg{font-size:11px}.est-via{font-size:9px;color:var(--text3)}
+.est-live{font-size:11px;color:var(--text3);font-style:italic}
 .sig-bar{display:flex;height:14px;border-radius:3px;overflow:hidden;font-size:0;min-width:80px}
 .sig-bar span{display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:#fff;line-height:1;transition:width .4s}
 .sig-buy{background:#16a34a}.sig-hold{background:#d97706}.sig-sell{background:#dc2626}
@@ -108,9 +110,10 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="sl">Positions</div>
 <table>
   <thead><tr>
-    <th style="width:28%">Instrument</th><th style="width:7%">Qty</th>
-    <th style="width:11%">Avg</th><th style="width:11%">Last</th>
-    <th style="width:12%" class="r">P&L</th><th style="width:20%">Signal</th><th style="width:11%" class="r">Type</th>
+    <th style="width:22%">Instrument</th><th style="width:5%">Qty</th>
+    <th style="width:9%">Avg</th><th style="width:9%">Last</th>
+    <th style="width:14%" id="th-est">Est.</th>
+    <th style="width:10%" class="r">P&L</th><th style="width:20%">Signal</th><th style="width:11%" class="r">Type</th>
   </tr></thead>
   <tbody id="pb"></tbody>
 </table>
@@ -228,6 +231,21 @@ const DEFAULT_POSITIONS=[
   {ticker:"EWY Jun18 $115 Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:8.30,pnl:0}
 ];
 
+// ---- HL proxy map: stock ticker → { hlCoin, beta } ----
+// beta = how much the stock moves per 1% move in the HL proxy
+// GUSH is 2x leveraged oil E&P, USO/OILK track crude ~1:1
+// SQQQ is -3x Nasdaq, CF/NTR correlate with commodity complex
+const HL_PROXY = {
+  GUSH:  { coin: '@107', beta: 2.0 },   // 2x oil E&P vs WTI perp
+  USO:   { coin: '@107', beta: 1.0 },   // WTI crude tracker
+  OILK:  { coin: '@107', beta: 0.95 },  // roll-efficient oil ~1:1
+  SQQQ:  { coin: 'ETH',  beta: -1.2 },  // -3x QQQ, ETH proxy for risk (inverted, dampened)
+  GLD:   { coin: 'XAU',  beta: 0.25 },  // GLD ~25% of spot gold moves (it's 1/10 oz)
+  CF:    { coin: '@107', beta: 0.5 },   // fertilizer correlates loosely with energy
+  NTR:   { coin: '@107', beta: 0.4 },   // diversified ag, lower oil beta
+  CANE:  { coin: '@107', beta: 0.15 },  // sugar has weak energy correlation
+};
+
 // load from localStorage or fall back to defaults
 function loadPositions() {
   try {
@@ -244,6 +262,83 @@ let pos = loadPositions();
 // ---- helpers ----
 function f(n,d=2){const v=parseFloat(n);if(isNaN(v))return'--';if(Math.abs(v)>9999)return'$'+Math.round(v).toLocaleString();if(Math.abs(v)>999)return'$'+v.toFixed(0);return'$'+v.toFixed(d);}
 function fp(n){const v=parseFloat(n);if(isNaN(v))return{t:'--',c:'fl'};return{t:(v>=0?'+':'')+f(v),c:v>0?'up':v<0?'dn':'fl'};}
+
+// ---- cache layer (localStorage + TTL) ----
+const CACHE_TTL = 120000; // 2 min — stale data shown instantly, refreshed in background
+function cacheGet(key) {
+  try {
+    const raw = localStorage.getItem('hc_' + key);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    return { data, ts, fresh: Date.now() - ts < CACHE_TTL };
+  } catch(_) { return null; }
+}
+function cacheSet(key, data) {
+  try { localStorage.setItem('hc_' + key, JSON.stringify({ data, ts: Date.now() })); } catch(_) {}
+}
+function cacheAge(key) {
+  const c = cacheGet(key);
+  if (!c) return null;
+  const sec = Math.round((Date.now() - c.ts) / 1000);
+  return sec < 60 ? sec + 's ago' : Math.round(sec / 60) + 'm ago';
+}
+
+// ---- market hours detection (US Eastern) ----
+function getMarketState() {
+  // returns 'open' | 'overnight' | 'weekend'
+  const now = new Date();
+  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const day = et.getDay(); // 0=Sun, 6=Sat
+  const h = et.getHours(), m = et.getMinutes();
+  const mins = h * 60 + m;
+  if (day === 0 || day === 6) return 'weekend';
+  if (day === 5 && mins >= 960) return 'weekend'; // Fri after 4pm
+  if (day === 1 && mins < 570) return 'weekend';  // Mon before 9:30am
+  if (mins >= 570 && mins < 960) return 'open';    // 9:30am-4pm
+  return 'overnight';
+}
+
+// ---- HL-based overnight/weekend estimator ----
+// hlMids: current HL mid prices, hlCloses: HL prices at last equity close
+let hlCloses = {}; // stored: { coin: price } at market close
+function loadHLCloses() {
+  try { const s = localStorage.getItem('hc_hlCloses'); if (s) hlCloses = JSON.parse(s); } catch(_) {}
+}
+function saveHLCloses(mids) {
+  // save current HL mids as the "close" reference
+  const coins = new Set(Object.values(HL_PROXY).map(p => p.coin));
+  const snap = {};
+  coins.forEach(c => { if (mids[c]) snap[c] = parseFloat(mids[c]); });
+  hlCloses = snap;
+  try { localStorage.setItem('hc_hlCloses', JSON.stringify(snap)); } catch(_) {}
+}
+loadHLCloses();
+
+function computeEstimates(mids) {
+  // Returns map: ticker → { estPrice, estChgPct, proxy }
+  // Only meaningful when market is closed
+  const est = {};
+  if (!mids || !Object.keys(hlCloses).length) return est;
+  pos.forEach(p => {
+    if (p.type === 'option') return;
+    const proxy = HL_PROXY[p.ticker];
+    if (!proxy) return;
+    const curMid = parseFloat(mids[proxy.coin]);
+    const closeMid = hlCloses[proxy.coin];
+    if (!curMid || !closeMid) return;
+    const proxyChgPct = ((curMid - closeMid) / closeMid) * 100;
+    const estChgPct = proxyChgPct * proxy.beta;
+    const base = p.lastPrice || p.avg; // use last known price or avg
+    const estPrice = base * (1 + estChgPct / 100);
+    est[p.ticker] = {
+      estPrice: Math.round(estPrice * 100) / 100,
+      estChgPct: Math.round(estChgPct * 100) / 100,
+      proxy: proxy.coin === '@107' ? 'WTI' : proxy.coin,
+      beta: proxy.beta
+    };
+  });
+  return est;
+}
 
 // ---- status pills ----
 // dot states: 'pending' | 'ok' | 'err'
@@ -328,15 +423,34 @@ function renderSignalBar(sig) {
 }
 
 // ---- render positions table ----
+let lastEstimates = {};
 function render(){
   const tb=document.getElementById('pb'); tb.innerHTML=''; let tot=0;
+  const mktState = getMarketState();
+  const closed = mktState !== 'open';
+  // update header
+  const thEst = document.getElementById('th-est');
+  if (thEst) thEst.textContent = closed ? (mktState === 'weekend' ? 'Wknd est.' : 'O/N est.') : 'Est.';
+
   pos.forEach(p=>{
     tot+=parseFloat(p.pnl)||0;
     const pnl=fp(p.pnl);
     const lp=p.lastPrice ? f(p.lastPrice) : '<span class="sh">live</span>';
     const sig=computeSignal(p);
+    // estimate column
+    let estHtml = '';
+    const e = lastEstimates[p.ticker];
+    if (closed && e) {
+      const cc = e.estChgPct >= 0 ? 'up' : 'dn';
+      const sign = e.estChgPct >= 0 ? '+' : '';
+      estHtml = `<div class="est-cell"><span class="est-px">${f(e.estPrice)}</span> <span class="est-chg ${cc}">${sign}${e.estChgPct}%</span><div class="est-via">via ${e.proxy} ×${e.beta}</div></div>`;
+    } else if (!closed && p.type === 'stock') {
+      estHtml = '<span class="est-live">mkt open</span>';
+    } else {
+      estHtml = '<span class="est-live">—</span>';
+    }
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><span class="tk">${p.ticker}</span><span class="bg ${p.bg}">${p.label}</span></td><td>${p.qty}</td><td>${f(p.avg)}</td><td>${lp}</td><td class="r ${pnl.c}">${pnl.t}</td><td>${renderSignalBar(sig)}</td><td class="r" style="font-size:11px;color:var(--text3)">${p.type}</td>`;
+    tr.innerHTML=`<td><span class="tk">${p.ticker}</span><span class="bg ${p.bg}">${p.label}</span></td><td>${p.qty}</td><td>${f(p.avg)}</td><td>${lp}</td><td>${estHtml}</td><td class="r ${pnl.c}">${pnl.t}</td><td>${renderSignalBar(sig)}</td><td class="r" style="font-size:11px;color:var(--text3)">${p.type}</td>`;
     tb.appendChild(tr);
   });
   const uel=document.getElementById('m2');
@@ -349,43 +463,100 @@ function render(){
 // Stocks/ETFs/crypto with a simple ticker (no spaces) get fetched.
 // Options (type==='option') are skipped -- no Yahoo symbol available.
 // Positions with an hl field use Hyperliquid for perp pricing (not Yahoo).
+function applyYahooResults(results) {
+  results.forEach(q => {
+    pos.forEach(p => {
+      const sym = p.yahooTicker || p.ticker;
+      if (sym === q.symbol) { p.lastPrice = q.regularMarketPrice; }
+    });
+  });
+}
 async function fYahoo(){
   setStatus('yf','pending','Yahoo...');
-  // extract unique Yahoo-fetchable tickers: non-option, ticker has no spaces
   const equities = pos.filter(p => p.type !== 'option' && !/\s/.test(p.ticker));
   const symbols  = [...new Set(equities.map(p => p.yahooTicker || p.ticker))];
   if (!symbols.length) { setStatus('yf','err','No equity tickers'); return false; }
+  // restore from cache immediately
+  const cached = cacheGet('yf');
+  if (cached) {
+    applyYahooResults(cached.data);
+    render();
+    if (cached.fresh) {
+      setStatus('yf','ok','Yahoo  | cached ' + cacheAge('yf'));
+      return true;
+    }
+    setStatus('yf','pending','Yahoo  | stale, refreshing...');
+  }
   try {
     const res = await fetch(YF_URL + '?symbols=' + symbols.join(','), { headers: { 'Accept': 'application/json' } });
     if (!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
     const results = data?.quoteResponse?.result || [];
     if (!results.length) throw new Error('empty');
-    results.forEach(q => {
-      pos.forEach(p => {
-        const sym = p.yahooTicker || p.ticker;
-        if (sym === q.symbol) { p.lastPrice = q.regularMarketPrice; }
-      });
-    });
+    cacheSet('yf', results);
+    applyYahooResults(results);
     render();
     setStatus('yf','ok','Yahoo  | '+results.length+' quotes');
     return true;
   } catch(e) {
+    if (cached) { setStatus('yf','ok','Yahoo  | cached ' + cacheAge('yf')); return true; }
     setStatus('yf', 'err', 'Yahoo  | '+e.message);
     return false;
   }
 }
 
 // ---- Hyperliquid ----
+function applyHLMids(mids) {
+  const mp={BTC:['pbtc','cbtc'],ETH:['peth','ceth']};
+  for(const[coin,[pid]] of Object.entries(mp)){
+    const mid=mids[coin]; if(!mid)continue;
+    const el=document.getElementById(pid); if(el){el.textContent=f(mid);el.classList.remove('sh');}
+  }
+  const gldPos = pos.find(p => p.ticker === 'GLD');
+  if(gldPos && gldPos.lastPrice){
+    const gel=document.getElementById('pxau'); if(gel){gel.textContent=f(gldPos.lastPrice);gel.classList.remove('sh');}
+    const gce=document.getElementById('cxau'); if(gce){gce.textContent='via GLD';gce.className='pch fl';}
+    liveData.gold = gldPos.lastPrice;
+  } else { liveData.gold = null; }
+  liveData.btc = mids['BTC'] || null;
+  const wti=mids['@107']||mids['WTI'];
+  liveData.wti = wti || null;
+  const wel=document.getElementById('pwti');
+  if(wel){wel.textContent=wti?f(wti):'—';wel.classList.remove('sh');document.getElementById('cwti').textContent=wti?'perp mid':'—';}
+}
 async function fHL(){
   setStatus('hl','pending','Hyperliquid...');
+  // restore from cache immediately
+  const cached = cacheGet('hl');
+  if (cached) {
+    applyHLMids(cached.data);
+    const ms = getMarketState();
+    if (ms !== 'open') lastEstimates = computeEstimates(cached.data);
+    if (cached.fresh) {
+      const btcPx = cached.data['BTC'] ? '  | BTC '+f(cached.data['BTC'],0) : '';
+      const estTag = ms !== 'open' ? '  | est. active' : '';
+      setStatus('hl','ok','Hyperliquid  | cached ' + cacheAge('hl') + btcPx + estTag);
+      return true;
+    }
+    setStatus('hl','pending','Hyperliquid  | stale, refreshing...');
+  }
   try{
     const mids=await fetch(HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'allMids'})}).then(r=>r.json());
-    // Map: coin -> [priceEl, changeEl]. Gold uses Yahoo (GLD), not HL.
+    cacheSet('hl', mids);
+    applyHLMids(mids);
+    // save HL closes when market is open (reference for overnight estimates)
+    const mktState = getMarketState();
+    if (mktState === 'open') saveHLCloses(mids);
+    // compute estimates when market closed
+    if (mktState !== 'open') {
+      lastEstimates = computeEstimates(mids);
+    } else {
+      lastEstimates = {};
+    }
+    // fetch candle data for 24h change
     const mp={BTC:['pbtc','cbtc'],ETH:['peth','ceth']};
     for(const[coin,[pid,cid]] of Object.entries(mp)){
       const mid=mids[coin]; if(!mid)continue;
-      const el=document.getElementById(pid); if(el){el.textContent=f(mid);el.classList.remove('sh');}
       try{
         const now=Date.now();
         const cc=await fetch(HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'candleSnapshot',req:{coin,interval:'1d',startTime:now-86400000,endTime:now}})}).then(r=>r.json());
@@ -396,59 +567,78 @@ async function fHL(){
         }
       }catch(_){}
     }
-    // Gold: use GLD last price from Yahoo (already fetched) as proxy
-    const gldPos = pos.find(p => p.ticker === 'GLD');
-    if(gldPos && gldPos.lastPrice){
-      const gel=document.getElementById('pxau'); if(gel){gel.textContent=f(gldPos.lastPrice);gel.classList.remove('sh');}
-      const gce=document.getElementById('cxau'); if(gce){gce.textContent='via GLD';gce.className='pch fl';}
-      liveData.gold = gldPos.lastPrice;
-    } else { liveData.gold = null; }
-    // store perp prices for review
-    liveData.btc = mids['BTC'] || null;
-    // WTI proxy — HL @107 is a micro contract, multiply by factor or show raw
-    const wti=mids['@107']||mids['WTI'];
-    liveData.wti = wti || null;
-    const wel=document.getElementById('pwti');
-    if(wel){wel.textContent=wti?f(wti):'—';wel.classList.remove('sh');document.getElementById('cwti').textContent=wti?'perp mid':'—';}
-    // HL drives perp display only -- position prices come from Yahoo
     const btcPx = mids['BTC'] ? '  | BTC '+f(mids['BTC'],0) : '';
-    setStatus('hl','ok','Hyperliquid'+btcPx);
+    const estTag = mktState !== 'open' ? '  | est. active' : '';
+    setStatus('hl','ok','Hyperliquid'+btcPx+estTag);
     return true;
   }catch(e){
+    if (cached) { setStatus('hl','ok','Hyperliquid  | cached ' + cacheAge('hl')); return true; }
     setStatus('hl','err', 'Hyperliquid  | '+e.message);
     return false;
   }
 }
 
 // ---- Polymarket ----
+const PM_MARKETS=[
+  {slug:'us-x-iran-ceasefire-by-december-31',     v:'pd',b:'bd'},
+  {slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30',v:'ph',b:'bh'}
+];
+function applyPMData(pmData) {
+  PM_MARKETS.forEach(m => {
+    const pct = pmData[m.slug];
+    if (pct === undefined) return;
+    const vel=document.getElementById(m.v); const bel=document.getElementById(m.b);
+    if(vel)vel.textContent=pct+'%'; if(bel)bel.style.width=pct+'%';
+    if(m.slug.includes('ceasefire')) liveData.ceasefire=pct;
+    if(m.slug.includes('hormuz')) liveData.hormuz=pct;
+  });
+}
 async function fPM(){
   setStatus('pm','pending','Polymarket...');
-  const ms=[
-    {slug:'us-x-iran-ceasefire-by-december-31',     v:'pd',b:'bd'},
-    {slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30',v:'ph',b:'bh'}
-  ];
+  // restore from cache immediately
+  const cached = cacheGet('pm');
+  if (cached) {
+    applyPMData(cached.data);
+    if (cached.fresh) {
+      setStatus('pm','ok','Polymarket  | cached ' + cacheAge('pm'));
+      return Object.keys(cached.data).length;
+    }
+    setStatus('pm','pending','Polymarket  | stale, refreshing...');
+  }
   let ok=0;
-  for(const m of ms){
+  const pmData = {};
+  for(const m of PM_MARKETS){
     try{
       const data=await fetch(PM_URL + '?slug=' + m.slug).then(r=>r.json());
       if(data&&data.length){
         let prices=data[0].outcomePrices||[];
         if(typeof prices==='string') try{prices=JSON.parse(prices)}catch(_){prices=[]}
         const pct=Math.round(parseFloat(prices[0]||0)*100);
-        const vel=document.getElementById(m.v); const bel=document.getElementById(m.b);
-        if(vel)vel.textContent=pct+'%'; if(bel)bel.style.width=pct+'%'; ok++;
-        if(m.slug.includes('ceasefire')) liveData.ceasefire=pct;
-        if(m.slug.includes('hormuz')) liveData.hormuz=pct;
+        pmData[m.slug] = pct;
+        ok++;
       }
     }catch(_){}
   }
-  if(ok>0) setStatus('pm','ok','Polymarket  | '+ok+'/'+ms.length+' live');
-  else      setStatus('pm','err','Polymarket  | failed');
+  if(ok>0) {
+    cacheSet('pm', pmData);
+    applyPMData(pmData);
+    setStatus('pm','ok','Polymarket  | '+ok+'/'+PM_MARKETS.length+' live');
+  } else if (cached) {
+    setStatus('pm','ok','Polymarket  | cached ' + cacheAge('pm'));
+    return Object.keys(cached.data).length;
+  } else {
+    setStatus('pm','err','Polymarket  | failed');
+  }
   return ok;
 }
 
 // ---- live data store for review ----
 let liveData = { ceasefire: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null };
+// restore liveData from cache on load
+try {
+  const ld = localStorage.getItem('hc_liveData');
+  if (ld) Object.assign(liveData, JSON.parse(ld));
+} catch(_) {}
 
 // ---- portfolio review generator ----
 function updateReview() {
@@ -567,6 +757,7 @@ function importJson() {
     }
     pos = arr;
     savePositions(pos);
+    invalidateCache();
     render();
     closeModal();
     go();
@@ -585,6 +776,7 @@ function exportJson() {
 function resetPositions() {
   pos = JSON.parse(JSON.stringify(DEFAULT_POSITIONS));
   savePositions(pos);
+  invalidateCache();
   document.getElementById('json-input').value = JSON.stringify(pos, null, 2);
   render();
   go();
@@ -602,6 +794,7 @@ function addPosition() {
   if (isNaN(qty) || isNaN(avg)) { errEl.textContent = 'Qty and Avg price are required'; return; }
   pos.push({ ticker, label: label || ticker, type, bg, qty, avg, pnl });
   savePositions(pos);
+  invalidateCache();
   render();
   closeModal();
   // clear form
@@ -621,11 +814,21 @@ async function go(){
   setStatus('hl','pending','Hyperliquid...');
   setStatus('pm','pending','Polymarket...');
   await Promise.all([fYahoo(), fHL(), fPM()]);
+  // persist liveData for fast next load
+  try { localStorage.setItem('hc_liveData', JSON.stringify(liveData)); } catch(_) {}
+  render(); // re-render with estimates + latest data
   updateReview();
+  const mkt = getMarketState();
+  const mktLabel = mkt === 'open' ? '' : mkt === 'weekend' ? ' · wknd est.' : ' · o/n est.';
   const t=new Date().toLocaleTimeString();
   document.getElementById('ts').textContent=t;
   document.getElementById('lts').textContent='Updated '+t;
-  document.getElementById('sl').textContent='Positions  | auto-refresh 60s';
+  document.getElementById('sl').textContent='Positions  | auto-refresh 60s' + mktLabel;
+}
+
+// invalidate cache when positions change so next fetch is fresh
+function invalidateCache() {
+  ['hc_yf','hc_hl','hc_pm'].forEach(k => localStorage.removeItem(k));
 }
 
 render();go();setInterval(go,60000);

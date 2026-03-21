@@ -131,12 +131,10 @@ button:hover{background:var(--bg2);color:var(--text)}
 </div>
 
 <script>
-// ---- API endpoints ----
-// corsproxy format: PROXY + fullTargetUrl (with all query params already in it)
-const PROXY  = 'https://corsproxy.io/?';
-const HL_URL = 'https://api.hyperliquid.xyz/info';          // POST, no query params
-const PM_URL = 'https://gamma-api.polymarket.com/markets';
-const YF_URL = 'https://query1.finance.yahoo.com/v8/finance/quote';
+// ---- API endpoints (Vercel serverless functions) ----
+const YF_URL = '/api/yahoo';
+const HL_URL = '/api/hyperliquid';
+const PM_URL = '/api/polymarket';
 
 // ---- POSITIONS JSON ---- Claude updates this block to reflect current portfolio
 const POSITIONS=[
@@ -199,10 +197,7 @@ async function fYahoo(){
   const symbols  = [...new Set(equities.map(p => p.yahooTicker || p.ticker))];
   if (!symbols.length) { setStatus('yf','err','No equity tickers'); return false; }
   try {
-    // Build full Yahoo URL first, then pass entire thing to corsproxy
-    const targetUrl = YF_URL + '?symbols=' + symbols.join(',') + '&fields=regularMarketPrice,regularMarketChangePercent,shortName';
-    const proxyUrl  = PROXY + targetUrl;   // corsproxy.io/?https://query1...
-    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json' } });
+    const res = await fetch(YF_URL + '?symbols=' + symbols.join(','), { headers: { 'Accept': 'application/json' } });
     if (!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
     const results = data?.quoteResponse?.result || [];
@@ -217,8 +212,7 @@ async function fYahoo(){
     setStatus('yf','ok','Yahoo  | '+results.length+' quotes');
     return true;
   } catch(e) {
-    const isNetwork = e.message === 'Failed to fetch' || e.message.includes('network');
-    setStatus('yf', 'err', isNetwork ? 'Yahoo  | CORS blocked' : 'Yahoo  | '+e.message);
+    setStatus('yf', 'err', 'Yahoo  | '+e.message);
     return false;
   }
 }
@@ -227,15 +221,14 @@ async function fYahoo(){
 async function fHL(){
   setStatus('hl','pending','Hyperliquid...');
   try{
-    // HL uses POST to a fixed URL -- no query params appended, PROXY+URL works fine
-    const mids=await fetch(PROXY+HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'allMids'})}).then(r=>r.json());
+    const mids=await fetch(HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'allMids'})}).then(r=>r.json());
     const mp={BTC:['pbtc','cbtc'],XAU:['pxau','cxau'],ETH:['peth','ceth']};
     for(const[coin,[pid,cid]] of Object.entries(mp)){
       const mid=mids[coin]; if(!mid)continue;
       const el=document.getElementById(pid); if(el){el.textContent=f(mid);el.classList.remove('sh');}
       try{
         const now=Date.now();
-        const cc=await fetch(PROXY+HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'candleSnapshot',req:{coin,interval:'1d',startTime:now-86400000,endTime:now}})}).then(r=>r.json());
+        const cc=await fetch(HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'candleSnapshot',req:{coin,interval:'1d',startTime:now-86400000,endTime:now}})}).then(r=>r.json());
         if(cc&&cc.length){
           const l=cc[cc.length-1]; const pct=((parseFloat(l.c)-parseFloat(l.o))/parseFloat(l.o))*100;
           const cel=document.getElementById(cid);
@@ -252,14 +245,12 @@ async function fHL(){
     setStatus('hl','ok','Hyperliquid'+btcPx);
     return true;
   }catch(e){
-    const isNetwork = e.message==='Failed to fetch'||e.message.includes('network');
-    setStatus('hl','err', isNetwork ? 'Hyperliquid  | CORS blocked' : 'Hyperliquid  | '+e.message);
+    setStatus('hl','err', 'Hyperliquid  | '+e.message);
     return false;
   }
 }
 
 // ---- Polymarket ----
-// FIX: build full target URL (with all query params) BEFORE prepending the proxy
 async function fPM(){
   setStatus('pm','pending','Polymarket...');
   const ms=[
@@ -269,10 +260,7 @@ async function fPM(){
   let ok=0;
   for(const m of ms){
     try{
-      // Build full Gamma API URL, then proxy it -- don't concatenate after PROXY
-      const targetUrl = PM_URL + '?slug=' + m.slug + '&limit=1';
-      const proxyUrl  = PROXY + targetUrl;
-      const data=await fetch(proxyUrl).then(r=>r.json());
+      const data=await fetch(PM_URL + '?slug=' + m.slug).then(r=>r.json());
       if(data&&data.length){
         const pct=Math.round(parseFloat((data[0].outcomePrices||[])[0]||0)*100);
         const vel=document.getElementById(m.v); const bel=document.getElementById(m.b);
@@ -281,7 +269,7 @@ async function fPM(){
     }catch(_){}
   }
   if(ok>0) setStatus('pm','ok','Polymarket  | '+ok+'/'+ms.length+' live');
-  else      setStatus('pm','err','Polymarket  | CORS blocked');
+  else      setStatus('pm','err','Polymarket  | failed');
   return ok;
 }
 

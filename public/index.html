@@ -23,7 +23,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 table{width:100%;border-collapse:collapse;table-layout:fixed}
 th{font-size:11px;color:var(--text3);font-weight:400;text-align:left;padding:0 6px 8px 0;border-bottom:.5px solid var(--border)}
 th.r,td.r{text-align:right;padding-right:0}
-td{font-size:13px;padding:9px 6px 9px 0;border-bottom:.5px solid var(--border);color:var(--text)}
+td{font-size:13px;padding:9px 8px 9px 0;border-bottom:.5px solid var(--border);color:var(--text)}
 tr:last-child td{border-bottom:none}
 .tk{font-weight:500}
 .bg{display:inline-block;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:5px;vertical-align:middle}
@@ -41,10 +41,11 @@ tr:last-child td{border-bottom:none}
 .pmq{flex:1;font-size:13px;color:var(--text2);line-height:1.4}
 .est-cell{font-size:12px;line-height:1.3}.est-px{font-weight:500}.est-chg{font-size:11px}.est-via{font-size:9px;color:var(--text3)}
 .est-live{font-size:11px;color:var(--text3);font-style:italic}
-.sig-bar{display:flex;height:14px;border-radius:3px;overflow:hidden;font-size:0;min-width:80px}
-.sig-bar span{display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:#fff;line-height:1;transition:width .4s}
+.sig-wrap{padding-left:6px}
+.sig-bar{display:flex;height:12px;border-radius:3px;overflow:hidden;font-size:0;max-width:160px}
+.sig-bar span{display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:#fff;line-height:1;transition:width .4s}
 .sig-buy{background:#16a34a}.sig-hold{background:#d97706}.sig-sell{background:#dc2626}
-.sig-lbl{font-size:10px;color:var(--text3);margin-top:2px;text-align:center;letter-spacing:.02em}
+.sig-lbl{font-size:9px;color:var(--text3);margin-top:2px;letter-spacing:.02em;max-width:160px}
 .pmbw{width:56px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0}
 .pmbf{height:100%;border-radius:2px;transition:width .6s}
 .pmv{font-size:15px;font-weight:500;min-width:40px;text-align:right}
@@ -110,10 +111,10 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="sl">Positions</div>
 <table>
   <thead><tr>
-    <th style="width:22%">Instrument</th><th style="width:5%">Qty</th>
+    <th style="width:20%">Instrument</th><th style="width:5%">Qty</th>
     <th style="width:9%">Avg</th><th style="width:9%">Last</th>
-    <th style="width:14%" id="th-est">Est.</th>
-    <th style="width:10%" class="r">P&L</th><th style="width:20%">Signal</th><th style="width:11%" class="r">Type</th>
+    <th style="width:13%" id="th-est">Est.</th>
+    <th style="width:9%" class="r">P&L</th><th style="width:26%">Signal</th><th style="width:9%" class="r">Type</th>
   </tr></thead>
   <tbody id="pb"></tbody>
 </table>
@@ -419,7 +420,7 @@ function renderSignalBar(sig) {
   if (sig.hold > 0) parts.push(`<span class="sig-hold" style="width:${sig.hold}%">${sig.hold > 12 ? sig.hold + '%' : ''}</span>`);
   if (sig.sell > 0) parts.push(`<span class="sig-sell" style="width:${sig.sell}%">${sig.sell > 12 ? sig.sell + '%' : ''}</span>`);
   const dominant = sig.buy >= sig.hold && sig.buy >= sig.sell ? 'BUY' : sig.sell >= sig.hold ? 'SELL' : 'HOLD';
-  return `<div class="sig-bar">${parts.join('')}</div><div class="sig-lbl">${dominant}</div>`;
+  return `<div class="sig-wrap"><div class="sig-bar">${parts.join('')}</div><div class="sig-lbl">${dominant}</div></div>`;
 }
 
 // ---- render positions table ----

@@ -120,14 +120,8 @@ button:hover{background:var(--bg2);color:var(--text)}
 </table>
 
 <div class="div"></div>
-<div class="sl">Polymarket — exit signals</div>
-<div class="pml">
-  <div class="pmr"><div class="pmq">Ceasefire by Dec 31</div><div class="pmbw"><div class="pmbf" id="bd" style="width:69%;background:var(--bg-success)"></div></div><div class="pmv up" id="pd">69%</div></div>
-  <div class="pmr"><div class="pmq">Military action through Mar 31</div><div class="pmbw"><div class="pmbf" id="bm" style="width:90%;background:var(--bg-danger)"></div></div><div class="pmv dn" id="pm2">90%</div></div>
-  <div class="pmr"><div class="pmq">Hormuz normal by end of April</div><div class="pmbw"><div class="pmbf" id="bh" style="width:27%;background:var(--bg-warning)"></div></div><div class="pmv wn" id="ph">27%</div></div>
-  <div class="pmr"><div class="pmq">Crude hits $100 by end of March</div><div class="pmbw"><div class="pmbf" id="bo3" style="width:89%;background:var(--bg-warning)"></div></div><div class="pmv wn" id="po">89%</div></div>
-  <div class="pmr"><div class="pmq">20+ ships transit Hormuz in March</div><div class="pmbw"><div class="pmbf" id="bsh" style="width:35%;background:var(--bg-info)"></div></div><div class="pmv inf" id="ps">35%</div></div>
-</div>
+<div class="sl">Polymarket — exit signals <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)">(sorted by urgency)</span></div>
+<div class="pml" id="pm-list"></div>
 
 <div class="div"></div>
 <div class="sl">Hyperliquid perps — 24/7 pricing</div>
@@ -339,6 +333,46 @@ function computeEstimates(mids) {
     };
   });
   return est;
+}
+
+// ---- exit signals (Polymarket) ----
+const EXIT_SIGNALS = [
+  { id:'ceasefire', label:'Ceasefire by Dec 31', deadline:'2026-12-31', slug:'us-x-iran-ceasefire-by-december-31', color:'var(--bg-success)', pctClass:'up', pct:69, impact:'high', action:'Trim oil longs 30-50%' },
+  { id:'military', label:'Military action through Mar 31', deadline:'2026-03-31', slug:null, color:'var(--bg-danger)', pctClass:'dn', pct:90, impact:'high', action:'Confirms thesis — hold' },
+  { id:'hormuz', label:'Hormuz normal by end of April', deadline:'2026-04-30', slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30', color:'var(--bg-warning)', pctClass:'wn', pct:27, impact:'high', action:'If >60% trim oil' },
+  { id:'crude100', label:'Crude hits $100 by end of March', deadline:'2026-03-31', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:89, impact:'medium', action:'Take profit on USO/OILK' },
+  { id:'ships', label:'20+ ships transit Hormuz in March', deadline:'2026-03-31', slug:null, color:'var(--bg-info)', pctClass:'inf', pct:35, impact:'medium', action:'Watch vessel counts' },
+];
+
+function daysUntil(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return Math.max(0, Math.ceil((d - now) / 86400000));
+}
+
+function urgencyScore(sig) {
+  // Lower = more urgent. Combines deadline proximity with probability.
+  // High-probability events with near deadlines score lowest (most urgent).
+  const days = daysUntil(sig.deadline);
+  const probWeight = sig.pct >= 70 ? 0.3 : sig.pct >= 50 ? 0.6 : 0.9;
+  const impactMult = sig.impact === 'high' ? 0.7 : 1.0;
+  return days * probWeight * impactMult;
+}
+
+function renderExitSignals() {
+  const list = document.getElementById('pm-list');
+  if (!list) return;
+  const sorted = [...EXIT_SIGNALS].sort((a, b) => urgencyScore(a) - urgencyScore(b));
+  list.innerHTML = sorted.map(s => {
+    const days = daysUntil(s.deadline);
+    const daysLabel = days === 0 ? 'today' : days <= 7 ? days + 'd left' : Math.ceil(days / 7) + 'w left';
+    const urgency = days <= 10 ? 'dn' : days <= 30 ? 'wn' : 'fl';
+    return `<div class="pmr">
+      <div class="pmq">${s.label}<span style="font-size:10px;color:var(--text3);margin-left:6px" class="${urgency}">${daysLabel}</span></div>
+      <div class="pmbw"><div class="pmbf" id="b-${s.id}" style="width:${s.pct}%;background:${s.color}"></div></div>
+      <div class="pmv ${s.pctClass}" id="p-${s.id}">${s.pct}%</div>
+    </div>`;
+  }).join('');
 }
 
 // ---- status pills ----
@@ -588,11 +622,20 @@ function applyPMData(pmData) {
   PM_MARKETS.forEach(m => {
     const pct = pmData[m.slug];
     if (pct === undefined) return;
-    const vel=document.getElementById(m.v); const bel=document.getElementById(m.b);
-    if(vel)vel.textContent=pct+'%'; if(bel)bel.style.width=pct+'%';
     if(m.slug.includes('ceasefire')) liveData.ceasefire=pct;
     if(m.slug.includes('hormuz')) liveData.hormuz=pct;
+    // update EXIT_SIGNALS with live data
+    const sig = EXIT_SIGNALS.find(s => s.slug === m.slug);
+    if (sig) sig.pct = pct;
   });
+  // update signal bar elements after render
+  EXIT_SIGNALS.forEach(s => {
+    const bel = document.getElementById('b-' + s.id);
+    const vel = document.getElementById('p-' + s.id);
+    if (bel) bel.style.width = s.pct + '%';
+    if (vel) vel.textContent = s.pct + '%';
+  });
+  renderExitSignals();
 }
 async function fPM(){
   setStatus('pm','pending','Polymarket...');
@@ -832,7 +875,7 @@ function invalidateCache() {
   ['hc_yf','hc_hl','hc_pm'].forEach(k => localStorage.removeItem(k));
 }
 
-render();go();setInterval(go,60000);
+renderExitSignals();render();go();setInterval(go,60000);
 </script>
 </body>
 </html>

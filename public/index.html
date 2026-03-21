@@ -39,6 +39,8 @@ tr:last-child td{border-bottom:none}
 .pml{display:flex;flex-direction:column;gap:6px}
 .pmr{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r)}
 .pmq{flex:1;font-size:13px;color:var(--text2);line-height:1.4}
+.est-cell{font-size:12px;line-height:1.3}.est-px{font-weight:500}.est-chg{font-size:11px}.est-via{font-size:9px;color:var(--text3)}
+.est-live{font-size:11px;color:var(--text3);font-style:italic}
 .sig-bar{display:flex;height:14px;border-radius:3px;overflow:hidden;font-size:0;min-width:80px}
 .sig-bar span{display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:#fff;line-height:1;transition:width .4s}
 .sig-buy{background:#16a34a}.sig-hold{background:#d97706}.sig-sell{background:#dc2626}
@@ -108,9 +110,10 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="sl">Positions</div>
 <table>
   <thead><tr>
-    <th style="width:28%">Instrument</th><th style="width:7%">Qty</th>
-    <th style="width:11%">Avg</th><th style="width:11%">Last</th>
-    <th style="width:12%" class="r">P&L</th><th style="width:20%">Signal</th><th style="width:11%" class="r">Type</th>
+    <th style="width:22%">Instrument</th><th style="width:5%">Qty</th>
+    <th style="width:9%">Avg</th><th style="width:9%">Last</th>
+    <th style="width:14%" id="th-est">Est.</th>
+    <th style="width:10%" class="r">P&L</th><th style="width:20%">Signal</th><th style="width:11%" class="r">Type</th>
   </tr></thead>
   <tbody id="pb"></tbody>
 </table>
@@ -228,6 +231,21 @@ const DEFAULT_POSITIONS=[
   {ticker:"EWY Jun18 $115 Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:8.30,pnl:0}
 ];
 
+// ---- HL proxy map: stock ticker → { hlCoin, beta } ----
+// beta = how much the stock moves per 1% move in the HL proxy
+// GUSH is 2x leveraged oil E&P, USO/OILK track crude ~1:1
+// SQQQ is -3x Nasdaq, CF/NTR correlate with commodity complex
+const HL_PROXY = {
+  GUSH:  { coin: '@107', beta: 2.0 },   // 2x oil E&P vs WTI perp
+  USO:   { coin: '@107', beta: 1.0 },   // WTI crude tracker
+  OILK:  { coin: '@107', beta: 0.95 },  // roll-efficient oil ~1:1
+  SQQQ:  { coin: 'ETH',  beta: -1.2 },  // -3x QQQ, ETH proxy for risk (inverted, dampened)
+  GLD:   { coin: 'XAU',  beta: 0.25 },  // GLD ~25% of spot gold moves (it's 1/10 oz)
+  CF:    { coin: '@107', beta: 0.5 },   // fertilizer correlates loosely with energy
+  NTR:   { coin: '@107', beta: 0.4 },   // diversified ag, lower oil beta
+  CANE:  { coin: '@107', beta: 0.15 },  // sugar has weak energy correlation
+};
+
 // load from localStorage or fall back to defaults
 function loadPositions() {
   try {
@@ -263,6 +281,63 @@ function cacheAge(key) {
   if (!c) return null;
   const sec = Math.round((Date.now() - c.ts) / 1000);
   return sec < 60 ? sec + 's ago' : Math.round(sec / 60) + 'm ago';
+}
+
+// ---- market hours detection (US Eastern) ----
+function getMarketState() {
+  // returns 'open' | 'overnight' | 'weekend'
+  const now = new Date();
+  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const day = et.getDay(); // 0=Sun, 6=Sat
+  const h = et.getHours(), m = et.getMinutes();
+  const mins = h * 60 + m;
+  if (day === 0 || day === 6) return 'weekend';
+  if (day === 5 && mins >= 960) return 'weekend'; // Fri after 4pm
+  if (day === 1 && mins < 570) return 'weekend';  // Mon before 9:30am
+  if (mins >= 570 && mins < 960) return 'open';    // 9:30am-4pm
+  return 'overnight';
+}
+
+// ---- HL-based overnight/weekend estimator ----
+// hlMids: current HL mid prices, hlCloses: HL prices at last equity close
+let hlCloses = {}; // stored: { coin: price } at market close
+function loadHLCloses() {
+  try { const s = localStorage.getItem('hc_hlCloses'); if (s) hlCloses = JSON.parse(s); } catch(_) {}
+}
+function saveHLCloses(mids) {
+  // save current HL mids as the "close" reference
+  const coins = new Set(Object.values(HL_PROXY).map(p => p.coin));
+  const snap = {};
+  coins.forEach(c => { if (mids[c]) snap[c] = parseFloat(mids[c]); });
+  hlCloses = snap;
+  try { localStorage.setItem('hc_hlCloses', JSON.stringify(snap)); } catch(_) {}
+}
+loadHLCloses();
+
+function computeEstimates(mids) {
+  // Returns map: ticker → { estPrice, estChgPct, proxy }
+  // Only meaningful when market is closed
+  const est = {};
+  if (!mids || !Object.keys(hlCloses).length) return est;
+  pos.forEach(p => {
+    if (p.type === 'option') return;
+    const proxy = HL_PROXY[p.ticker];
+    if (!proxy) return;
+    const curMid = parseFloat(mids[proxy.coin]);
+    const closeMid = hlCloses[proxy.coin];
+    if (!curMid || !closeMid) return;
+    const proxyChgPct = ((curMid - closeMid) / closeMid) * 100;
+    const estChgPct = proxyChgPct * proxy.beta;
+    const base = p.lastPrice || p.avg; // use last known price or avg
+    const estPrice = base * (1 + estChgPct / 100);
+    est[p.ticker] = {
+      estPrice: Math.round(estPrice * 100) / 100,
+      estChgPct: Math.round(estChgPct * 100) / 100,
+      proxy: proxy.coin === '@107' ? 'WTI' : proxy.coin,
+      beta: proxy.beta
+    };
+  });
+  return est;
 }
 
 // ---- status pills ----
@@ -348,15 +423,34 @@ function renderSignalBar(sig) {
 }
 
 // ---- render positions table ----
+let lastEstimates = {};
 function render(){
   const tb=document.getElementById('pb'); tb.innerHTML=''; let tot=0;
+  const mktState = getMarketState();
+  const closed = mktState !== 'open';
+  // update header
+  const thEst = document.getElementById('th-est');
+  if (thEst) thEst.textContent = closed ? (mktState === 'weekend' ? 'Wknd est.' : 'O/N est.') : 'Est.';
+
   pos.forEach(p=>{
     tot+=parseFloat(p.pnl)||0;
     const pnl=fp(p.pnl);
     const lp=p.lastPrice ? f(p.lastPrice) : '<span class="sh">live</span>';
     const sig=computeSignal(p);
+    // estimate column
+    let estHtml = '';
+    const e = lastEstimates[p.ticker];
+    if (closed && e) {
+      const cc = e.estChgPct >= 0 ? 'up' : 'dn';
+      const sign = e.estChgPct >= 0 ? '+' : '';
+      estHtml = `<div class="est-cell"><span class="est-px">${f(e.estPrice)}</span> <span class="est-chg ${cc}">${sign}${e.estChgPct}%</span><div class="est-via">via ${e.proxy} ×${e.beta}</div></div>`;
+    } else if (!closed && p.type === 'stock') {
+      estHtml = '<span class="est-live">mkt open</span>';
+    } else {
+      estHtml = '<span class="est-live">—</span>';
+    }
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><span class="tk">${p.ticker}</span><span class="bg ${p.bg}">${p.label}</span></td><td>${p.qty}</td><td>${f(p.avg)}</td><td>${lp}</td><td class="r ${pnl.c}">${pnl.t}</td><td>${renderSignalBar(sig)}</td><td class="r" style="font-size:11px;color:var(--text3)">${p.type}</td>`;
+    tr.innerHTML=`<td><span class="tk">${p.ticker}</span><span class="bg ${p.bg}">${p.label}</span></td><td>${p.qty}</td><td>${f(p.avg)}</td><td>${lp}</td><td>${estHtml}</td><td class="r ${pnl.c}">${pnl.t}</td><td>${renderSignalBar(sig)}</td><td class="r" style="font-size:11px;color:var(--text3)">${p.type}</td>`;
     tb.appendChild(tr);
   });
   const uel=document.getElementById('m2');
@@ -436,9 +530,12 @@ async function fHL(){
   const cached = cacheGet('hl');
   if (cached) {
     applyHLMids(cached.data);
+    const ms = getMarketState();
+    if (ms !== 'open') lastEstimates = computeEstimates(cached.data);
     if (cached.fresh) {
       const btcPx = cached.data['BTC'] ? '  | BTC '+f(cached.data['BTC'],0) : '';
-      setStatus('hl','ok','Hyperliquid  | cached ' + cacheAge('hl') + btcPx);
+      const estTag = ms !== 'open' ? '  | est. active' : '';
+      setStatus('hl','ok','Hyperliquid  | cached ' + cacheAge('hl') + btcPx + estTag);
       return true;
     }
     setStatus('hl','pending','Hyperliquid  | stale, refreshing...');
@@ -447,6 +544,15 @@ async function fHL(){
     const mids=await fetch(HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'allMids'})}).then(r=>r.json());
     cacheSet('hl', mids);
     applyHLMids(mids);
+    // save HL closes when market is open (reference for overnight estimates)
+    const mktState = getMarketState();
+    if (mktState === 'open') saveHLCloses(mids);
+    // compute estimates when market closed
+    if (mktState !== 'open') {
+      lastEstimates = computeEstimates(mids);
+    } else {
+      lastEstimates = {};
+    }
     // fetch candle data for 24h change
     const mp={BTC:['pbtc','cbtc'],ETH:['peth','ceth']};
     for(const[coin,[pid,cid]] of Object.entries(mp)){
@@ -462,7 +568,8 @@ async function fHL(){
       }catch(_){}
     }
     const btcPx = mids['BTC'] ? '  | BTC '+f(mids['BTC'],0) : '';
-    setStatus('hl','ok','Hyperliquid'+btcPx);
+    const estTag = mktState !== 'open' ? '  | est. active' : '';
+    setStatus('hl','ok','Hyperliquid'+btcPx+estTag);
     return true;
   }catch(e){
     if (cached) { setStatus('hl','ok','Hyperliquid  | cached ' + cacheAge('hl')); return true; }
@@ -650,6 +757,7 @@ function importJson() {
     }
     pos = arr;
     savePositions(pos);
+    invalidateCache();
     render();
     closeModal();
     go();
@@ -668,6 +776,7 @@ function exportJson() {
 function resetPositions() {
   pos = JSON.parse(JSON.stringify(DEFAULT_POSITIONS));
   savePositions(pos);
+  invalidateCache();
   document.getElementById('json-input').value = JSON.stringify(pos, null, 2);
   render();
   go();
@@ -685,6 +794,7 @@ function addPosition() {
   if (isNaN(qty) || isNaN(avg)) { errEl.textContent = 'Qty and Avg price are required'; return; }
   pos.push({ ticker, label: label || ticker, type, bg, qty, avg, pnl });
   savePositions(pos);
+  invalidateCache();
   render();
   closeModal();
   // clear form
@@ -706,11 +816,19 @@ async function go(){
   await Promise.all([fYahoo(), fHL(), fPM()]);
   // persist liveData for fast next load
   try { localStorage.setItem('hc_liveData', JSON.stringify(liveData)); } catch(_) {}
+  render(); // re-render with estimates + latest data
   updateReview();
+  const mkt = getMarketState();
+  const mktLabel = mkt === 'open' ? '' : mkt === 'weekend' ? ' · wknd est.' : ' · o/n est.';
   const t=new Date().toLocaleTimeString();
   document.getElementById('ts').textContent=t;
   document.getElementById('lts').textContent='Updated '+t;
-  document.getElementById('sl').textContent='Positions  | auto-refresh 60s';
+  document.getElementById('sl').textContent='Positions  | auto-refresh 60s' + mktLabel;
+}
+
+// invalidate cache when positions change so next fetch is fresh
+function invalidateCache() {
+  ['hc_yf','hc_hl','hc_pm'].forEach(k => localStorage.removeItem(k));
 }
 
 render();go();setInterval(go,60000);

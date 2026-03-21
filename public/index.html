@@ -39,6 +39,10 @@ tr:last-child td{border-bottom:none}
 .pml{display:flex;flex-direction:column;gap:6px}
 .pmr{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r)}
 .pmq{flex:1;font-size:13px;color:var(--text2);line-height:1.4}
+.sig-bar{display:flex;height:14px;border-radius:3px;overflow:hidden;font-size:0;min-width:80px}
+.sig-bar span{display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:#fff;line-height:1;transition:width .4s}
+.sig-buy{background:#16a34a}.sig-hold{background:#d97706}.sig-sell{background:#dc2626}
+.sig-lbl{font-size:10px;color:var(--text3);margin-top:2px;text-align:center;letter-spacing:.02em}
 .pmbw{width:56px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0}
 .pmbf{height:100%;border-radius:2px;transition:width .6s}
 .pmv{font-size:15px;font-weight:500;min-width:40px;text-align:right}
@@ -104,9 +108,9 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="sl">Positions</div>
 <table>
   <thead><tr>
-    <th style="width:34%">Instrument</th><th style="width:9%">Qty</th>
-    <th style="width:14%">Avg</th><th style="width:14%">Last</th>
-    <th style="width:15%" class="r">P&L</th><th style="width:14%" class="r">Type</th>
+    <th style="width:28%">Instrument</th><th style="width:7%">Qty</th>
+    <th style="width:11%">Avg</th><th style="width:11%">Last</th>
+    <th style="width:12%" class="r">P&L</th><th style="width:20%">Signal</th><th style="width:11%" class="r">Type</th>
   </tr></thead>
   <tbody id="pb"></tbody>
 </table>
@@ -151,6 +155,7 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div style="display:flex;gap:6px;flex-wrap:wrap">
     <button onclick="go()">Refresh all</button>
     <button onclick="openModal()">Edit positions</button>
+    <button onclick="window.open('/api/positions','_blank')">API ↗</button>
   </div>
   <div class="api-pills">
     <div class="apill"><div class="sdot sdot-pending" id="dot-yf"></div><span id="lbl-yf">Yahoo Finance</span></div>
@@ -250,6 +255,78 @@ function setStatus(id, state, label) {
   lbl.textContent = label;
 }
 
+// ---- signal computation: buy/hold/sell probability per position ----
+function computeSignal(p) {
+  // Returns {buy, hold, sell} each 0–100, summing to 100
+  let buy = 33, hold = 34, sell = 33;
+
+  const cf = liveData.ceasefire; // ceasefire prob (0-100)
+  const hz = liveData.hormuz;    // hormuz normalization (0-100)
+  const retPct = p.lastPrice ? ((p.lastPrice - p.avg) / p.avg) * 100 : null;
+  const costBasis = p.qty * p.avg;
+
+  // --- P&L momentum signal ---
+  if (retPct !== null) {
+    if (retPct >= 50) { sell += 35; hold -= 10; buy -= 25; }
+    else if (retPct >= 40) { sell += 28; hold -= 5; buy -= 23; }
+    else if (retPct >= 25) { sell += 12; hold += 5; buy -= 17; }
+    else if (retPct >= 10) { hold += 12; buy -= 4; sell -= 8; }
+    else if (retPct >= 0) { hold += 8; buy += 2; sell -= 10; }
+    else if (retPct >= -10) { buy += 10; hold += 2; sell -= 12; }
+    else if (retPct >= -25) { buy += 5; sell += 5; hold -= 10; }
+    else { sell += 15; buy -= 5; hold -= 10; } // deep loss, cut
+  }
+
+  // --- Oil-specific: Polymarket ceasefire / Hormuz signals ---
+  const isOil = ['bo'].includes(p.bg);
+  const isShort = ['bs','bp'].includes(p.bg);
+  if (cf !== null) {
+    if (isOil) {
+      if (cf >= 70) { sell += 25; buy -= 15; hold -= 10; }
+      else if (cf >= 50) { sell += 10; hold += 5; buy -= 15; }
+      else if (cf < 30) { buy += 15; sell -= 10; hold -= 5; }
+      else { hold += 5; buy -= 3; sell -= 2; }
+    }
+    if (isShort) {
+      // shorts benefit from conflict continuing
+      if (cf < 30) { hold += 10; buy += 5; sell -= 15; }
+      else if (cf >= 70) { sell += 15; buy -= 10; hold -= 5; }
+    }
+  }
+  if (hz !== null && isOil) {
+    if (hz <= 20) { buy += 8; sell -= 5; hold -= 3; }
+    else if (hz >= 60) { sell += 12; buy -= 8; hold -= 4; }
+  }
+
+  // --- Exit trigger rules (GUSH specific) ---
+  if (p.ticker === 'GUSH' && retPct !== null) {
+    if (retPct >= 40) { sell += 20; buy -= 15; hold -= 5; } // trigger #3
+  }
+
+  // --- Size-aware: large positions bias toward trim ---
+  if (costBasis > 10000) { sell += 4; buy -= 2; hold -= 2; }
+
+  // --- Agri/Gold: neutral lean hold ---
+  if (['ba','bg2c'].includes(p.bg)) { hold += 8; buy -= 4; sell -= 4; }
+
+  // Clamp and normalize to 100
+  buy = Math.max(0, buy); hold = Math.max(0, hold); sell = Math.max(0, sell);
+  const sum = buy + hold + sell;
+  buy = Math.round(buy / sum * 100);
+  sell = Math.round(sell / sum * 100);
+  hold = 100 - buy - sell;
+  return { buy, hold, sell };
+}
+
+function renderSignalBar(sig) {
+  const parts = [];
+  if (sig.buy > 0) parts.push(`<span class="sig-buy" style="width:${sig.buy}%">${sig.buy > 12 ? sig.buy + '%' : ''}</span>`);
+  if (sig.hold > 0) parts.push(`<span class="sig-hold" style="width:${sig.hold}%">${sig.hold > 12 ? sig.hold + '%' : ''}</span>`);
+  if (sig.sell > 0) parts.push(`<span class="sig-sell" style="width:${sig.sell}%">${sig.sell > 12 ? sig.sell + '%' : ''}</span>`);
+  const dominant = sig.buy >= sig.hold && sig.buy >= sig.sell ? 'BUY' : sig.sell >= sig.hold ? 'SELL' : 'HOLD';
+  return `<div class="sig-bar">${parts.join('')}</div><div class="sig-lbl">${dominant}</div>`;
+}
+
 // ---- render positions table ----
 function render(){
   const tb=document.getElementById('pb'); tb.innerHTML=''; let tot=0;
@@ -257,8 +334,9 @@ function render(){
     tot+=parseFloat(p.pnl)||0;
     const pnl=fp(p.pnl);
     const lp=p.lastPrice ? f(p.lastPrice) : '<span class="sh">live</span>';
+    const sig=computeSignal(p);
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><span class="tk">${p.ticker}</span><span class="bg ${p.bg}">${p.label}</span></td><td>${p.qty}</td><td>${f(p.avg)}</td><td>${lp}</td><td class="r ${pnl.c}">${pnl.t}</td><td class="r" style="font-size:11px;color:var(--text3)">${p.type}</td>`;
+    tr.innerHTML=`<td><span class="tk">${p.ticker}</span><span class="bg ${p.bg}">${p.label}</span></td><td>${p.qty}</td><td>${f(p.avg)}</td><td>${lp}</td><td class="r ${pnl.c}">${pnl.t}</td><td>${renderSignalBar(sig)}</td><td class="r" style="font-size:11px;color:var(--text3)">${p.type}</td>`;
     tb.appendChild(tr);
   });
   const uel=document.getElementById('m2');

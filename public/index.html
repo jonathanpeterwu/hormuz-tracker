@@ -245,6 +245,26 @@ let pos = loadPositions();
 function f(n,d=2){const v=parseFloat(n);if(isNaN(v))return'--';if(Math.abs(v)>9999)return'$'+Math.round(v).toLocaleString();if(Math.abs(v)>999)return'$'+v.toFixed(0);return'$'+v.toFixed(d);}
 function fp(n){const v=parseFloat(n);if(isNaN(v))return{t:'--',c:'fl'};return{t:(v>=0?'+':'')+f(v),c:v>0?'up':v<0?'dn':'fl'};}
 
+// ---- cache layer (localStorage + TTL) ----
+const CACHE_TTL = 120000; // 2 min — stale data shown instantly, refreshed in background
+function cacheGet(key) {
+  try {
+    const raw = localStorage.getItem('hc_' + key);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    return { data, ts, fresh: Date.now() - ts < CACHE_TTL };
+  } catch(_) { return null; }
+}
+function cacheSet(key, data) {
+  try { localStorage.setItem('hc_' + key, JSON.stringify({ data, ts: Date.now() })); } catch(_) {}
+}
+function cacheAge(key) {
+  const c = cacheGet(key);
+  if (!c) return null;
+  const sec = Math.round((Date.now() - c.ts) / 1000);
+  return sec < 60 ? sec + 's ago' : Math.round(sec / 60) + 'm ago';
+}
+
 // ---- status pills ----
 // dot states: 'pending' | 'ok' | 'err'
 function setStatus(id, state, label) {
@@ -349,43 +369,88 @@ function render(){
 // Stocks/ETFs/crypto with a simple ticker (no spaces) get fetched.
 // Options (type==='option') are skipped -- no Yahoo symbol available.
 // Positions with an hl field use Hyperliquid for perp pricing (not Yahoo).
+function applyYahooResults(results) {
+  results.forEach(q => {
+    pos.forEach(p => {
+      const sym = p.yahooTicker || p.ticker;
+      if (sym === q.symbol) { p.lastPrice = q.regularMarketPrice; }
+    });
+  });
+}
 async function fYahoo(){
   setStatus('yf','pending','Yahoo...');
-  // extract unique Yahoo-fetchable tickers: non-option, ticker has no spaces
   const equities = pos.filter(p => p.type !== 'option' && !/\s/.test(p.ticker));
   const symbols  = [...new Set(equities.map(p => p.yahooTicker || p.ticker))];
   if (!symbols.length) { setStatus('yf','err','No equity tickers'); return false; }
+  // restore from cache immediately
+  const cached = cacheGet('yf');
+  if (cached) {
+    applyYahooResults(cached.data);
+    render();
+    if (cached.fresh) {
+      setStatus('yf','ok','Yahoo  | cached ' + cacheAge('yf'));
+      return true;
+    }
+    setStatus('yf','pending','Yahoo  | stale, refreshing...');
+  }
   try {
     const res = await fetch(YF_URL + '?symbols=' + symbols.join(','), { headers: { 'Accept': 'application/json' } });
     if (!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
     const results = data?.quoteResponse?.result || [];
     if (!results.length) throw new Error('empty');
-    results.forEach(q => {
-      pos.forEach(p => {
-        const sym = p.yahooTicker || p.ticker;
-        if (sym === q.symbol) { p.lastPrice = q.regularMarketPrice; }
-      });
-    });
+    cacheSet('yf', results);
+    applyYahooResults(results);
     render();
     setStatus('yf','ok','Yahoo  | '+results.length+' quotes');
     return true;
   } catch(e) {
+    if (cached) { setStatus('yf','ok','Yahoo  | cached ' + cacheAge('yf')); return true; }
     setStatus('yf', 'err', 'Yahoo  | '+e.message);
     return false;
   }
 }
 
 // ---- Hyperliquid ----
+function applyHLMids(mids) {
+  const mp={BTC:['pbtc','cbtc'],ETH:['peth','ceth']};
+  for(const[coin,[pid]] of Object.entries(mp)){
+    const mid=mids[coin]; if(!mid)continue;
+    const el=document.getElementById(pid); if(el){el.textContent=f(mid);el.classList.remove('sh');}
+  }
+  const gldPos = pos.find(p => p.ticker === 'GLD');
+  if(gldPos && gldPos.lastPrice){
+    const gel=document.getElementById('pxau'); if(gel){gel.textContent=f(gldPos.lastPrice);gel.classList.remove('sh');}
+    const gce=document.getElementById('cxau'); if(gce){gce.textContent='via GLD';gce.className='pch fl';}
+    liveData.gold = gldPos.lastPrice;
+  } else { liveData.gold = null; }
+  liveData.btc = mids['BTC'] || null;
+  const wti=mids['@107']||mids['WTI'];
+  liveData.wti = wti || null;
+  const wel=document.getElementById('pwti');
+  if(wel){wel.textContent=wti?f(wti):'—';wel.classList.remove('sh');document.getElementById('cwti').textContent=wti?'perp mid':'—';}
+}
 async function fHL(){
   setStatus('hl','pending','Hyperliquid...');
+  // restore from cache immediately
+  const cached = cacheGet('hl');
+  if (cached) {
+    applyHLMids(cached.data);
+    if (cached.fresh) {
+      const btcPx = cached.data['BTC'] ? '  | BTC '+f(cached.data['BTC'],0) : '';
+      setStatus('hl','ok','Hyperliquid  | cached ' + cacheAge('hl') + btcPx);
+      return true;
+    }
+    setStatus('hl','pending','Hyperliquid  | stale, refreshing...');
+  }
   try{
     const mids=await fetch(HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'allMids'})}).then(r=>r.json());
-    // Map: coin -> [priceEl, changeEl]. Gold uses Yahoo (GLD), not HL.
+    cacheSet('hl', mids);
+    applyHLMids(mids);
+    // fetch candle data for 24h change
     const mp={BTC:['pbtc','cbtc'],ETH:['peth','ceth']};
     for(const[coin,[pid,cid]] of Object.entries(mp)){
       const mid=mids[coin]; if(!mid)continue;
-      const el=document.getElementById(pid); if(el){el.textContent=f(mid);el.classList.remove('sh');}
       try{
         const now=Date.now();
         const cc=await fetch(HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'candleSnapshot',req:{coin,interval:'1d',startTime:now-86400000,endTime:now}})}).then(r=>r.json());
@@ -396,59 +461,77 @@ async function fHL(){
         }
       }catch(_){}
     }
-    // Gold: use GLD last price from Yahoo (already fetched) as proxy
-    const gldPos = pos.find(p => p.ticker === 'GLD');
-    if(gldPos && gldPos.lastPrice){
-      const gel=document.getElementById('pxau'); if(gel){gel.textContent=f(gldPos.lastPrice);gel.classList.remove('sh');}
-      const gce=document.getElementById('cxau'); if(gce){gce.textContent='via GLD';gce.className='pch fl';}
-      liveData.gold = gldPos.lastPrice;
-    } else { liveData.gold = null; }
-    // store perp prices for review
-    liveData.btc = mids['BTC'] || null;
-    // WTI proxy — HL @107 is a micro contract, multiply by factor or show raw
-    const wti=mids['@107']||mids['WTI'];
-    liveData.wti = wti || null;
-    const wel=document.getElementById('pwti');
-    if(wel){wel.textContent=wti?f(wti):'—';wel.classList.remove('sh');document.getElementById('cwti').textContent=wti?'perp mid':'—';}
-    // HL drives perp display only -- position prices come from Yahoo
     const btcPx = mids['BTC'] ? '  | BTC '+f(mids['BTC'],0) : '';
     setStatus('hl','ok','Hyperliquid'+btcPx);
     return true;
   }catch(e){
+    if (cached) { setStatus('hl','ok','Hyperliquid  | cached ' + cacheAge('hl')); return true; }
     setStatus('hl','err', 'Hyperliquid  | '+e.message);
     return false;
   }
 }
 
 // ---- Polymarket ----
+const PM_MARKETS=[
+  {slug:'us-x-iran-ceasefire-by-december-31',     v:'pd',b:'bd'},
+  {slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30',v:'ph',b:'bh'}
+];
+function applyPMData(pmData) {
+  PM_MARKETS.forEach(m => {
+    const pct = pmData[m.slug];
+    if (pct === undefined) return;
+    const vel=document.getElementById(m.v); const bel=document.getElementById(m.b);
+    if(vel)vel.textContent=pct+'%'; if(bel)bel.style.width=pct+'%';
+    if(m.slug.includes('ceasefire')) liveData.ceasefire=pct;
+    if(m.slug.includes('hormuz')) liveData.hormuz=pct;
+  });
+}
 async function fPM(){
   setStatus('pm','pending','Polymarket...');
-  const ms=[
-    {slug:'us-x-iran-ceasefire-by-december-31',     v:'pd',b:'bd'},
-    {slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30',v:'ph',b:'bh'}
-  ];
+  // restore from cache immediately
+  const cached = cacheGet('pm');
+  if (cached) {
+    applyPMData(cached.data);
+    if (cached.fresh) {
+      setStatus('pm','ok','Polymarket  | cached ' + cacheAge('pm'));
+      return Object.keys(cached.data).length;
+    }
+    setStatus('pm','pending','Polymarket  | stale, refreshing...');
+  }
   let ok=0;
-  for(const m of ms){
+  const pmData = {};
+  for(const m of PM_MARKETS){
     try{
       const data=await fetch(PM_URL + '?slug=' + m.slug).then(r=>r.json());
       if(data&&data.length){
         let prices=data[0].outcomePrices||[];
         if(typeof prices==='string') try{prices=JSON.parse(prices)}catch(_){prices=[]}
         const pct=Math.round(parseFloat(prices[0]||0)*100);
-        const vel=document.getElementById(m.v); const bel=document.getElementById(m.b);
-        if(vel)vel.textContent=pct+'%'; if(bel)bel.style.width=pct+'%'; ok++;
-        if(m.slug.includes('ceasefire')) liveData.ceasefire=pct;
-        if(m.slug.includes('hormuz')) liveData.hormuz=pct;
+        pmData[m.slug] = pct;
+        ok++;
       }
     }catch(_){}
   }
-  if(ok>0) setStatus('pm','ok','Polymarket  | '+ok+'/'+ms.length+' live');
-  else      setStatus('pm','err','Polymarket  | failed');
+  if(ok>0) {
+    cacheSet('pm', pmData);
+    applyPMData(pmData);
+    setStatus('pm','ok','Polymarket  | '+ok+'/'+PM_MARKETS.length+' live');
+  } else if (cached) {
+    setStatus('pm','ok','Polymarket  | cached ' + cacheAge('pm'));
+    return Object.keys(cached.data).length;
+  } else {
+    setStatus('pm','err','Polymarket  | failed');
+  }
   return ok;
 }
 
 // ---- live data store for review ----
 let liveData = { ceasefire: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null };
+// restore liveData from cache on load
+try {
+  const ld = localStorage.getItem('hc_liveData');
+  if (ld) Object.assign(liveData, JSON.parse(ld));
+} catch(_) {}
 
 // ---- portfolio review generator ----
 function updateReview() {
@@ -621,6 +704,8 @@ async function go(){
   setStatus('hl','pending','Hyperliquid...');
   setStatus('pm','pending','Polymarket...');
   await Promise.all([fYahoo(), fHL(), fPM()]);
+  // persist liveData for fast next load
+  try { localStorage.setItem('hc_liveData', JSON.stringify(liveData)); } catch(_) {}
   updateReview();
   const t=new Date().toLocaleTimeString();
   document.getElementById('ts').textContent=t;

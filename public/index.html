@@ -62,6 +62,23 @@ tr:last-child td{border-bottom:none}
 .ts{font-size:11px;color:var(--text3)}
 button{font-family:inherit;font-size:12px;padding:6px 14px;background:transparent;border:.5px solid var(--border2);border-radius:var(--r);color:var(--text2);cursor:pointer}
 button:hover{background:var(--bg2);color:var(--text)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg);border:1px solid var(--border2);border-radius:var(--rl);width:90%;max-width:560px;max-height:85vh;overflow:auto;padding:1.25rem}
+.modal h3{font-size:15px;font-weight:500;margin-bottom:1rem}
+.modal textarea{width:100%;height:220px;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:var(--r);padding:10px;resize:vertical;line-height:1.5;tab-size:2}
+.modal-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.modal-row.full{grid-template-columns:1fr}
+.modal label{font-size:11px;color:var(--text3);display:block;margin-bottom:3px}
+.modal input,.modal select{width:100%;font-family:inherit;font-size:13px;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px}
+.modal-actions{display:flex;gap:8px;margin-top:1rem;justify-content:flex-end}
+.modal-actions button{padding:7px 18px}
+.btn-primary{background:var(--bg-info);color:#fff;border-color:var(--bg-info)}
+.btn-primary:hover{opacity:.9;background:var(--bg-info);color:#fff}
+.modal-err{font-size:12px;color:var(--danger);margin-top:6px;min-height:16px}
+.modal-tabs{display:flex;gap:0;margin-bottom:1rem;border-bottom:1px solid var(--border)}
+.modal-tab{font-size:12px;padding:8px 16px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.modal-tab.active{color:var(--text);border-bottom-color:var(--bg-info)}
 @media(max-width:600px){.mets,.pg,.vg{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -131,7 +148,10 @@ button:hover{background:var(--bg2);color:var(--text)}
 </div>
 
 <div class="ft">
-  <button onclick="go()">Refresh all</button>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button onclick="go()">Refresh all</button>
+    <button onclick="openModal()">Edit positions</button>
+  </div>
   <div class="api-pills">
     <div class="apill"><div class="sdot sdot-pending" id="dot-yf"></div><span id="lbl-yf">Yahoo Finance</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-hl"></div><span id="lbl-hl">Hyperliquid</span></div>
@@ -140,30 +160,81 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div class="ts" id="lts">Not yet refreshed</div>
 </div>
 
+<div class="modal-overlay" id="pos-modal">
+  <div class="modal">
+    <h3>Edit positions</h3>
+    <div class="modal-tabs">
+      <div class="modal-tab active" id="tab-json" onclick="switchTab('json')">JSON import</div>
+      <div class="modal-tab" id="tab-add" onclick="switchTab('add')">Add position</div>
+    </div>
+    <div id="panel-json">
+      <textarea id="json-input" spellcheck="false" placeholder='Paste positions JSON array here...'></textarea>
+      <div class="modal-err" id="json-err"></div>
+      <div class="modal-actions">
+        <button onclick="exportJson()">Copy current</button>
+        <button onclick="resetPositions()">Reset defaults</button>
+        <button class="btn-primary" onclick="importJson()">Import &amp; save</button>
+      </div>
+    </div>
+    <div id="panel-add" style="display:none">
+      <div class="modal-row">
+        <div><label>Ticker</label><input id="add-ticker" placeholder="GUSH"></div>
+        <div><label>Label</label><input id="add-label" placeholder="2x oil E&P"></div>
+      </div>
+      <div class="modal-row">
+        <div><label>Type</label><select id="add-type"><option value="stock">stock</option><option value="option">option</option><option value="crypto">crypto</option></select></div>
+        <div><label>Badge color</label><select id="add-bg"><option value="bo">Oil (gold)</option><option value="bs">Short (red)</option><option value="bp">Options (purple)</option><option value="bg2c">Commodity (amber)</option><option value="ba">Agri (green)</option><option value="bcc">Crypto (blue)</option></select></div>
+      </div>
+      <div class="modal-row">
+        <div><label>Qty</label><input id="add-qty" type="number" step="any" placeholder="100"></div>
+        <div><label>Avg price</label><input id="add-avg" type="number" step="any" placeholder="36.15"></div>
+      </div>
+      <div class="modal-row full">
+        <div><label>Current P&L ($)</label><input id="add-pnl" type="number" step="any" placeholder="0" value="0"></div>
+      </div>
+      <div class="modal-err" id="add-err"></div>
+      <div class="modal-actions">
+        <button onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="addPosition()">Add position</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ---- API endpoints (Vercel serverless functions) ----
 const YF_URL = '/api/yahoo';
 const HL_URL = '/api/hyperliquid';
 const PM_URL = '/api/polymarket';
 
-// ---- POSITIONS JSON ---- Claude updates this block to reflect current portfolio
-const POSITIONS=[
-  {ticker:"GUSH",label:"2x oil E&P",type:"stock",bg:"bo",qty:400,avg:36.155,pnl:1056,hl:null},
-  {ticker:"USO",label:"WTI crude",type:"stock",bg:"bo",qty:125,avg:108.871,pnl:254,hl:null},
-  {ticker:"OILK",label:"Roll-efficient oil",type:"stock",bg:"bo",qty:200,avg:56.038,pnl:125,hl:null},
-  {ticker:"SQQQ",label:"Short QQQ 3x",type:"stock",bg:"bs",qty:100,avg:77.26,pnl:129.5,hl:null},
-  {ticker:"GLD",label:"Gold ETF",type:"stock",bg:"bg2c",qty:10,avg:420,pnl:0,hl:"XAU"},
-  {ticker:"CF",label:"Nitrogen fertilizer",type:"stock",bg:"ba",qty:15,avg:126,pnl:0,hl:null},
-  {ticker:"NTR",label:"Diversified fertilizer",type:"stock",bg:"ba",qty:40,avg:78,pnl:0,hl:null},
-  {ticker:"CANE",label:"Sugar ETF",type:"stock",bg:"ba",qty:200,avg:9.98,pnl:0,hl:null},
-  {ticker:"JETS $22 Jun Put",label:"Airlines short",type:"option",bg:"bp",qty:10,avg:1.262,pnl:54.78,hl:null},
-  {ticker:"TSM $185 Jan27 Put",label:"Taiwan tail",type:"option",bg:"bp",qty:1,avg:6.331,pnl:85.41,hl:null},
-  {ticker:"TSM $200 Jan27 Put",label:"Taiwan delta",type:"option",bg:"bp",qty:1,avg:8.051,pnl:117.22,hl:null},
-  {ticker:"EWY $115 Jun Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:8.30,pnl:0,hl:null},
-  {ticker:"BTC",label:"Bitcoin",type:"crypto",bg:"bcc",qty:0.0999,avg:72000,pnl:0,hl:"BTC"}
+// ---- POSITIONS JSON ---- default positions, overridden by localStorage if present
+const DEFAULT_POSITIONS=[
+  {ticker:"GUSH",label:"2x oil E&P",type:"stock",bg:"bo",qty:400,avg:36.155,pnl:2258},
+  {ticker:"USO",label:"WTI crude",type:"stock",bg:"bo",qty:125,avg:111.602,pnl:1016},
+  {ticker:"OILK",label:"Roll-efficient oil",type:"stock",bg:"bo",qty:200,avg:56.038,pnl:51},
+  {ticker:"SQQQ",label:"Short QQQ 3x",type:"stock",bg:"bs",qty:100,avg:78.985,pnl:-51},
+  {ticker:"GLD",label:"Gold ETF",type:"stock",bg:"bg2c",qty:10,avg:414.04,pnl:-13,hl:"XAU"},
+  {ticker:"CF",label:"Nitrogen fertilizer",type:"stock",bg:"ba",qty:15,avg:126.265,pnl:-86},
+  {ticker:"NTR",label:"Diversified fertilizer",type:"stock",bg:"ba",qty:40,avg:74.815,pnl:-32},
+  {ticker:"CANE",label:"Sugar ETF",type:"stock",bg:"ba",qty:200,avg:10.485,pnl:9},
+  {ticker:"JETS Jun18 $22 Put",label:"Airlines short",type:"option",bg:"bp",qty:10,avg:1.262,pnl:41},
+  {ticker:"TSM Jan15'27 $185 Put",label:"Taiwan tail",type:"option",bg:"bp",qty:1,avg:6.331,pnl:20},
+  {ticker:"TSM Jan15'27 $200 Put",label:"Taiwan delta",type:"option",bg:"bp",qty:1,avg:8.051,pnl:34},
+  {ticker:"EWY Jun18 $115 Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:8.30,pnl:0}
 ];
 
-let pos = POSITIONS;
+// load from localStorage or fall back to defaults
+function loadPositions() {
+  try {
+    const saved = localStorage.getItem('hormuz_positions');
+    if (saved) return JSON.parse(saved);
+  } catch(_) {}
+  return DEFAULT_POSITIONS;
+}
+function savePositions(p) {
+  localStorage.setItem('hormuz_positions', JSON.stringify(p));
+}
+let pos = loadPositions();
 
 // ---- helpers ----
 function f(n,d=2){const v=parseFloat(n);if(isNaN(v))return'--';if(Math.abs(v)>9999)return'$'+Math.round(v).toLocaleString();if(Math.abs(v)>999)return'$'+v.toFixed(0);return'$'+v.toFixed(d);}
@@ -232,7 +303,8 @@ async function fHL(){
   setStatus('hl','pending','Hyperliquid...');
   try{
     const mids=await fetch(HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'allMids'})}).then(r=>r.json());
-    const mp={BTC:['pbtc','cbtc'],XAU:['pxau','cxau'],ETH:['peth','ceth']};
+    // Map: coin -> [priceEl, changeEl]. Gold uses Yahoo (GLD), not HL.
+    const mp={BTC:['pbtc','cbtc'],ETH:['peth','ceth']};
     for(const[coin,[pid,cid]] of Object.entries(mp)){
       const mid=mids[coin]; if(!mid)continue;
       const el=document.getElementById(pid); if(el){el.textContent=f(mid);el.classList.remove('sh');}
@@ -246,14 +318,20 @@ async function fHL(){
         }
       }catch(_){}
     }
+    // Gold: use GLD last price from Yahoo (already fetched) as proxy
+    const gldPos = pos.find(p => p.ticker === 'GLD');
+    if(gldPos && gldPos.lastPrice){
+      const gel=document.getElementById('pxau'); if(gel){gel.textContent=f(gldPos.lastPrice);gel.classList.remove('sh');}
+      const gce=document.getElementById('cxau'); if(gce){gce.textContent='via GLD';gce.className='pch fl';}
+      liveData.gold = gldPos.lastPrice;
+    } else { liveData.gold = null; }
     // store perp prices for review
     liveData.btc = mids['BTC'] || null;
-    liveData.gold = mids['XAU'] || null;
-    // WTI proxy
+    // WTI proxy — HL @107 is a micro contract, multiply by factor or show raw
     const wti=mids['@107']||mids['WTI'];
     liveData.wti = wti || null;
     const wel=document.getElementById('pwti');
-    if(wel){wel.textContent=wti?f(wti):'~$112';wel.classList.remove('sh');document.getElementById('cwti').textContent=wti?'perp mid':'est';}
+    if(wel){wel.textContent=wti?f(wti):'—';wel.classList.remove('sh');document.getElementById('cwti').textContent=wti?'perp mid':'—';}
     // HL drives perp display only -- position prices come from Yahoo
     const btcPx = mids['BTC'] ? '  | BTC '+f(mids['BTC'],0) : '';
     setStatus('hl','ok','Hyperliquid'+btcPx);
@@ -276,7 +354,9 @@ async function fPM(){
     try{
       const data=await fetch(PM_URL + '?slug=' + m.slug).then(r=>r.json());
       if(data&&data.length){
-        const pct=Math.round(parseFloat((data[0].outcomePrices||[])[0]||0)*100);
+        let prices=data[0].outcomePrices||[];
+        if(typeof prices==='string') try{prices=JSON.parse(prices)}catch(_){prices=[]}
+        const pct=Math.round(parseFloat(prices[0]||0)*100);
         const vel=document.getElementById(m.v); const bel=document.getElementById(m.b);
         if(vel)vel.textContent=pct+'%'; if(bel)bel.style.width=pct+'%'; ok++;
         if(m.slug.includes('ceasefire')) liveData.ceasefire=pct;
@@ -297,72 +377,164 @@ function updateReview() {
   const el = document.getElementById('review-text');
   if (!el) return;
 
-  // compute total P&L from positions
-  let totalPnl = 0;
-  pos.forEach(p => { totalPnl += parseFloat(p.pnl) || 0; });
-  const pnlStr = (totalPnl >= 0 ? '+' : '') + '$' + Math.round(Math.abs(totalPnl)).toLocaleString();
+  // compute total P&L and cost basis for % return
+  let totalPnl = 0, totalCost = 0;
+  pos.forEach(p => {
+    totalPnl += parseFloat(p.pnl) || 0;
+    totalCost += p.qty * p.avg;
+  });
+  const pnlPct = totalCost > 0 ? ((totalPnl / totalCost) * 100).toFixed(1) : '0';
+  const pnlStr = (totalPnl >= 0 ? '+' : '-') + '$' + Math.round(Math.abs(totalPnl)).toLocaleString();
 
-  // gather signals
+  // compute per-position % moves from avg (using lastPrice if available)
+  function posReturn(ticker) {
+    const p = pos.find(x => x.ticker === ticker);
+    if (!p || !p.lastPrice) return null;
+    return ((p.lastPrice - p.avg) / p.avg * 100).toFixed(1);
+  }
+  const gushRet = posReturn('GUSH');
+  const usoRet = posReturn('USO');
+  const btcRet = posReturn('BTC');
+
   const cf = liveData.ceasefire;
   const hz = liveData.hormuz;
-  const wti = liveData.wti;
-  const gold = liveData.gold;
+  const btcVal = liveData.btc ? parseFloat(liveData.btc) : 0;
 
   let parts = [];
 
-  // sentence 1: portfolio status + key price drivers
-  let s1 = 'Portfolio is <strong>' + (totalPnl >= 0 ? 'green' : 'red') + ' at ' + pnlStr + '</strong> unrealized';
-  if (wti && gold) {
-    s1 += ' with WTI at <strong>' + f(wti) + '</strong> and gold at <strong>' + f(gold, 0) + '</strong>';
-  } else if (wti) {
-    s1 += ' with WTI at <strong>' + f(wti) + '</strong>';
+  // sentence 1: portfolio P&L with %, best/worst mover, cost of carry
+  let s1 = 'Book is <strong>' + pnlStr + ' (' + pnlPct + '%)</strong> on $' + Math.round(totalCost).toLocaleString() + ' deployed';
+  // highlight best mover
+  const movers = [{t:'GUSH',r:gushRet},{t:'USO',r:usoRet},{t:'BTC',r:btcRet}].filter(m=>m.r!==null);
+  if (movers.length) {
+    movers.sort((a,b) => Math.abs(parseFloat(b.r)) - Math.abs(parseFloat(a.r)));
+    const best = movers[0];
+    const bv = parseFloat(best.r);
+    s1 += ' — <strong class="' + (bv>=0?'up':'dn') + '">' + best.t + ' ' + (bv>=0?'+':'') + best.r + '%</strong> from entry is your biggest mover';
   }
   s1 += '.';
   parts.push(s1);
 
-  // sentence 2: polymarket signal assessment + action
+  // sentence 2: EV-weighted Polymarket read with concrete action
   if (cf !== null || hz !== null) {
     let s2 = '';
     if (cf !== null && cf >= 70) {
-      s2 = 'Ceasefire odds at <strong class="up">' + cf + '%</strong> have breached the 70% trim trigger — <strong>start scaling out of oil longs (GUSH, USO, OILK)</strong> and tighten stops on SQQQ.';
-    } else if (cf !== null && cf >= 55) {
-      s2 = 'Ceasefire odds climbing to <strong class="wn">' + cf + '%</strong> are approaching the 70% exit zone — <strong>prepare limit orders to trim ⅓ of oil positions</strong> if momentum continues.';
-    } else if (hz !== null && hz <= 20) {
-      s2 = 'Hormuz normalization at only <strong class="dn">' + hz + '%</strong> signals prolonged disruption — <strong>hold core oil thesis and consider adding on dips</strong> in GUSH or USO.';
-    } else {
-      let signals = [];
-      if (cf !== null) signals.push('ceasefire at ' + cf + '%');
-      if (hz !== null) signals.push('Hormuz normalization at ' + hz + '%');
-      s2 = 'Polymarket shows ' + signals.join(', ') + ' — <strong>no exit triggers hit, maintain positions</strong> and monitor for shifts above 70% ceasefire.';
+      const evLoss = cf; // cf% chance thesis dies
+      s2 = 'Ceasefire at <strong class="up">' + cf + '%</strong> means ' + evLoss + '% implied probability your oil longs go to zero edge — that\'s <strong>-EV to hold full size, trim 30-50% of GUSH/USO/OILK now</strong> and redeploy into gold or cash.';
+    } else if (cf !== null && cf >= 50) {
+      s2 = 'Ceasefire at <strong class="wn">' + cf + '%</strong> is a coin flip — oil longs are <strong>barely +EV at current sizing</strong>. Set hard stops at breakeven on USO/OILK and prepare to cut ⅓ if this crosses 60%.';
+    } else if (cf !== null && cf < 50 && hz !== null && hz <= 30) {
+      const edge = 100 - cf;
+      s2 = 'Ceasefire only ' + cf + '% with Hormuz normalization at ' + hz + '% — <strong>' + edge + '% implied odds the disruption holds, thesis is +EV</strong>. Oil longs have room to run; consider adding 10-15% to GUSH on any pullback.';
+    } else if (cf !== null && cf < 50) {
+      s2 = 'Ceasefire at ' + cf + '% means <strong>' + (100-cf) + '% the conflict persists — strongly +EV to hold</strong>. No trim triggers hit, keep full oil exposure and let winners ride.';
+    } else if (hz !== null) {
+      s2 = 'Hormuz normalization at ' + hz + '% — ' + (hz<=30 ? '<strong>disruption persists, +EV to hold oil thesis at full size</strong>.' : hz>=60 ? '<strong>shipping recovery accelerating, trim 25% of oil longs before edge erodes</strong>.' : 'neutral zone, <strong>hold positions but tighten stops to protect gains</strong>.');
     }
     parts.push(s2);
   }
 
-  // sentence 3: commodity/crypto read + tactical suggestion
-  if (wti || gold || liveData.btc) {
-    let s3 = '';
-    const wtiVal = wti ? parseFloat(wti) : 0;
-    const goldVal = gold ? parseFloat(gold) : 0;
-    const btcVal = liveData.btc ? parseFloat(liveData.btc) : 0;
-
-    if (wtiVal >= 95) {
-      s3 = 'WTI pushing <strong class="up">' + f(wti) + '</strong> is nearing the $100 target — <strong>set trailing stops on USO and take partial profits on OILK</strong>.';
-    } else if (goldVal >= 3200) {
-      s3 = 'Gold at <strong class="up">' + f(gold, 0) + '</strong> confirms safe-haven bid — <strong>hold GLD position and watch for WTI follow-through above $95</strong>.';
-    } else if (btcVal && btcVal < 70000) {
-      s3 = 'BTC weak at <strong class="dn">' + f(btcVal, 0) + '</strong> suggests risk-off — <strong>thesis intact, keep SQQQ hedge and watch crypto for capitulation entry</strong>.';
-    } else {
-      let reads = [];
-      if (wti) reads.push('WTI ' + f(wti));
-      if (gold) reads.push('gold ' + f(gold, 0));
-      if (btcVal) reads.push('BTC ' + f(btcVal, 0));
-      s3 = 'Perps show ' + reads.join(', ') + ' — <strong>no extreme levels hit, stay the course and revisit sizing if WTI breaks $95 or gold clears $3,200</strong>.';
-    }
-    parts.push(s3);
+  // sentence 3: cross-asset conviction call
+  let s3 = '';
+  const gushV = gushRet ? parseFloat(gushRet) : 0;
+  if (gushV >= 40) {
+    s3 = 'GUSH +' + gushRet + '% has hit the 40-50% trim zone from exit trigger #3 — <strong>this is a sell, take 30-50% off and lock in gains</strong>. Rebalance into GLD or SQQQ if you want to stay hedged.';
+  } else if (gushV >= 25) {
+    s3 = 'GUSH +' + gushRet + '% is running but hasn\'t hit the 40% aggressive trim level — <strong>raise stops to +15% from entry and let it ride</strong>. Risk/reward still favors holding.';
+  } else if (btcVal && btcVal < 70000) {
+    s3 = 'BTC at <strong class="dn">' + f(btcVal, 0) + '</strong>' + (btcRet ? ' (' + (parseFloat(btcRet)>=0?'+':'') + btcRet + '% vs entry)' : '') + ' confirms risk-off regime — <strong>SQQQ hedge is paying, keep it and size up if BTC breaks $65K</strong>.';
+  } else if (btcVal && btcVal > 85000) {
+    s3 = 'BTC at <strong class="up">' + f(btcVal, 0) + '</strong> is risk-on which conflicts with the war thesis — <strong>watch for divergence, if oil falls while BTC rallies consider cutting 20% of oil longs</strong>.';
+  } else {
+    let conviction = cf !== null && cf < 40 ? 'high' : cf !== null && cf < 60 ? 'moderate' : 'weakening';
+    s3 = 'Cross-asset signals show <strong>' + conviction + ' conviction</strong> in the disruption thesis — ' + (conviction === 'high' ? '<strong>hold full size, this is +EV across the board</strong>.' : conviction === 'moderate' ? '<strong>hold but set trailing stops at +10% from current levels</strong>.' : '<strong>start scaling out 15-20% of oil exposure, edge is thinning</strong>.');
   }
+  parts.push(s3);
 
   el.innerHTML = parts.join(' ');
 }
+
+// ---- position editor modal ----
+function openModal() {
+  document.getElementById('json-input').value = JSON.stringify(pos, null, 2);
+  document.getElementById('json-err').textContent = '';
+  document.getElementById('add-err').textContent = '';
+  document.getElementById('pos-modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('pos-modal').classList.remove('open');
+}
+function switchTab(tab) {
+  document.getElementById('tab-json').classList.toggle('active', tab==='json');
+  document.getElementById('tab-add').classList.toggle('active', tab==='add');
+  document.getElementById('panel-json').style.display = tab==='json' ? '' : 'none';
+  document.getElementById('panel-add').style.display = tab==='add' ? '' : 'none';
+}
+function importJson() {
+  const errEl = document.getElementById('json-err');
+  try {
+    const raw = document.getElementById('json-input').value.trim();
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || !arr.length) throw new Error('Must be a non-empty array');
+    // validate required fields
+    for (const p of arr) {
+      if (!p.ticker || p.qty === undefined || p.avg === undefined) {
+        throw new Error('Each position needs ticker, qty, avg');
+      }
+      // ensure defaults
+      p.pnl = p.pnl || 0;
+      p.type = p.type || 'stock';
+      p.bg = p.bg || 'bo';
+      p.label = p.label || p.ticker;
+    }
+    pos = arr;
+    savePositions(pos);
+    render();
+    closeModal();
+    go();
+  } catch(e) {
+    errEl.textContent = e.message;
+  }
+}
+function exportJson() {
+  const clean = pos.map(({lastPrice, ...rest}) => rest);
+  const text = JSON.stringify(clean, null, 2);
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById('json-err').textContent = 'Copied to clipboard';
+    setTimeout(() => document.getElementById('json-err').textContent = '', 2000);
+  });
+}
+function resetPositions() {
+  pos = JSON.parse(JSON.stringify(DEFAULT_POSITIONS));
+  savePositions(pos);
+  document.getElementById('json-input').value = JSON.stringify(pos, null, 2);
+  render();
+  go();
+}
+function addPosition() {
+  const errEl = document.getElementById('add-err');
+  const ticker = document.getElementById('add-ticker').value.trim();
+  const label = document.getElementById('add-label').value.trim();
+  const type = document.getElementById('add-type').value;
+  const bg = document.getElementById('add-bg').value;
+  const qty = parseFloat(document.getElementById('add-qty').value);
+  const avg = parseFloat(document.getElementById('add-avg').value);
+  const pnl = parseFloat(document.getElementById('add-pnl').value) || 0;
+  if (!ticker) { errEl.textContent = 'Ticker is required'; return; }
+  if (isNaN(qty) || isNaN(avg)) { errEl.textContent = 'Qty and Avg price are required'; return; }
+  pos.push({ ticker, label: label || ticker, type, bg, qty, avg, pnl });
+  savePositions(pos);
+  render();
+  closeModal();
+  // clear form
+  ['add-ticker','add-label','add-qty','add-avg','add-pnl'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('add-pnl').value = '0';
+  go();
+}
+// close modal on overlay click
+document.getElementById('pos-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
 
 // ---- main refresh ----
 async function go(){

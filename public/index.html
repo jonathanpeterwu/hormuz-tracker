@@ -62,6 +62,23 @@ tr:last-child td{border-bottom:none}
 .ts{font-size:11px;color:var(--text3)}
 button{font-family:inherit;font-size:12px;padding:6px 14px;background:transparent;border:.5px solid var(--border2);border-radius:var(--r);color:var(--text2);cursor:pointer}
 button:hover{background:var(--bg2);color:var(--text)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg);border:1px solid var(--border2);border-radius:var(--rl);width:90%;max-width:560px;max-height:85vh;overflow:auto;padding:1.25rem}
+.modal h3{font-size:15px;font-weight:500;margin-bottom:1rem}
+.modal textarea{width:100%;height:220px;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:var(--r);padding:10px;resize:vertical;line-height:1.5;tab-size:2}
+.modal-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.modal-row.full{grid-template-columns:1fr}
+.modal label{font-size:11px;color:var(--text3);display:block;margin-bottom:3px}
+.modal input,.modal select{width:100%;font-family:inherit;font-size:13px;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px}
+.modal-actions{display:flex;gap:8px;margin-top:1rem;justify-content:flex-end}
+.modal-actions button{padding:7px 18px}
+.btn-primary{background:var(--bg-info);color:#fff;border-color:var(--bg-info)}
+.btn-primary:hover{opacity:.9;background:var(--bg-info);color:#fff}
+.modal-err{font-size:12px;color:var(--danger);margin-top:6px;min-height:16px}
+.modal-tabs{display:flex;gap:0;margin-bottom:1rem;border-bottom:1px solid var(--border)}
+.modal-tab{font-size:12px;padding:8px 16px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.modal-tab.active{color:var(--text);border-bottom-color:var(--bg-info)}
 @media(max-width:600px){.mets,.pg,.vg{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -131,7 +148,10 @@ button:hover{background:var(--bg2);color:var(--text)}
 </div>
 
 <div class="ft">
-  <button onclick="go()">Refresh all</button>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button onclick="go()">Refresh all</button>
+    <button onclick="openModal()">Edit positions</button>
+  </div>
   <div class="api-pills">
     <div class="apill"><div class="sdot sdot-pending" id="dot-yf"></div><span id="lbl-yf">Yahoo Finance</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-hl"></div><span id="lbl-hl">Hyperliquid</span></div>
@@ -140,30 +160,81 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div class="ts" id="lts">Not yet refreshed</div>
 </div>
 
+<div class="modal-overlay" id="pos-modal">
+  <div class="modal">
+    <h3>Edit positions</h3>
+    <div class="modal-tabs">
+      <div class="modal-tab active" id="tab-json" onclick="switchTab('json')">JSON import</div>
+      <div class="modal-tab" id="tab-add" onclick="switchTab('add')">Add position</div>
+    </div>
+    <div id="panel-json">
+      <textarea id="json-input" spellcheck="false" placeholder='Paste positions JSON array here...'></textarea>
+      <div class="modal-err" id="json-err"></div>
+      <div class="modal-actions">
+        <button onclick="exportJson()">Copy current</button>
+        <button onclick="resetPositions()">Reset defaults</button>
+        <button class="btn-primary" onclick="importJson()">Import &amp; save</button>
+      </div>
+    </div>
+    <div id="panel-add" style="display:none">
+      <div class="modal-row">
+        <div><label>Ticker</label><input id="add-ticker" placeholder="GUSH"></div>
+        <div><label>Label</label><input id="add-label" placeholder="2x oil E&P"></div>
+      </div>
+      <div class="modal-row">
+        <div><label>Type</label><select id="add-type"><option value="stock">stock</option><option value="option">option</option><option value="crypto">crypto</option></select></div>
+        <div><label>Badge color</label><select id="add-bg"><option value="bo">Oil (gold)</option><option value="bs">Short (red)</option><option value="bp">Options (purple)</option><option value="bg2c">Commodity (amber)</option><option value="ba">Agri (green)</option><option value="bcc">Crypto (blue)</option></select></div>
+      </div>
+      <div class="modal-row">
+        <div><label>Qty</label><input id="add-qty" type="number" step="any" placeholder="100"></div>
+        <div><label>Avg price</label><input id="add-avg" type="number" step="any" placeholder="36.15"></div>
+      </div>
+      <div class="modal-row full">
+        <div><label>Current P&L ($)</label><input id="add-pnl" type="number" step="any" placeholder="0" value="0"></div>
+      </div>
+      <div class="modal-err" id="add-err"></div>
+      <div class="modal-actions">
+        <button onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="addPosition()">Add position</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ---- API endpoints (Vercel serverless functions) ----
 const YF_URL = '/api/yahoo';
 const HL_URL = '/api/hyperliquid';
 const PM_URL = '/api/polymarket';
 
-// ---- POSITIONS JSON ---- Claude updates this block to reflect current portfolio
-const POSITIONS=[
-  {ticker:"GUSH",label:"2x oil E&P",type:"stock",bg:"bo",qty:400,avg:36.155,pnl:1056,hl:null},
-  {ticker:"USO",label:"WTI crude",type:"stock",bg:"bo",qty:125,avg:108.871,pnl:254,hl:null},
-  {ticker:"OILK",label:"Roll-efficient oil",type:"stock",bg:"bo",qty:200,avg:56.038,pnl:125,hl:null},
-  {ticker:"SQQQ",label:"Short QQQ 3x",type:"stock",bg:"bs",qty:100,avg:77.26,pnl:129.5,hl:null},
-  {ticker:"GLD",label:"Gold ETF",type:"stock",bg:"bg2c",qty:10,avg:420,pnl:0,hl:"XAU"},
-  {ticker:"CF",label:"Nitrogen fertilizer",type:"stock",bg:"ba",qty:15,avg:126,pnl:0,hl:null},
-  {ticker:"NTR",label:"Diversified fertilizer",type:"stock",bg:"ba",qty:40,avg:78,pnl:0,hl:null},
-  {ticker:"CANE",label:"Sugar ETF",type:"stock",bg:"ba",qty:200,avg:9.98,pnl:0,hl:null},
-  {ticker:"JETS $22 Jun Put",label:"Airlines short",type:"option",bg:"bp",qty:10,avg:1.262,pnl:54.78,hl:null},
-  {ticker:"TSM $185 Jan27 Put",label:"Taiwan tail",type:"option",bg:"bp",qty:1,avg:6.331,pnl:85.41,hl:null},
-  {ticker:"TSM $200 Jan27 Put",label:"Taiwan delta",type:"option",bg:"bp",qty:1,avg:8.051,pnl:117.22,hl:null},
-  {ticker:"EWY $115 Jun Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:8.30,pnl:0,hl:null},
-  {ticker:"BTC",label:"Bitcoin",type:"crypto",bg:"bcc",qty:0.0999,avg:72000,pnl:0,hl:"BTC",yahooTicker:"BTC-USD"}
+// ---- POSITIONS JSON ---- default positions, overridden by localStorage if present
+const DEFAULT_POSITIONS=[
+  {ticker:"GUSH",label:"2x oil E&P",type:"stock",bg:"bo",qty:400,avg:36.155,pnl:2258},
+  {ticker:"USO",label:"WTI crude",type:"stock",bg:"bo",qty:125,avg:111.602,pnl:1016},
+  {ticker:"OILK",label:"Roll-efficient oil",type:"stock",bg:"bo",qty:200,avg:56.038,pnl:51},
+  {ticker:"SQQQ",label:"Short QQQ 3x",type:"stock",bg:"bs",qty:100,avg:78.985,pnl:-51},
+  {ticker:"GLD",label:"Gold ETF",type:"stock",bg:"bg2c",qty:10,avg:414.04,pnl:-13,hl:"XAU"},
+  {ticker:"CF",label:"Nitrogen fertilizer",type:"stock",bg:"ba",qty:15,avg:126.265,pnl:-86},
+  {ticker:"NTR",label:"Diversified fertilizer",type:"stock",bg:"ba",qty:40,avg:74.815,pnl:-32},
+  {ticker:"CANE",label:"Sugar ETF",type:"stock",bg:"ba",qty:200,avg:10.485,pnl:9},
+  {ticker:"JETS Jun18 $22 Put",label:"Airlines short",type:"option",bg:"bp",qty:10,avg:1.262,pnl:41},
+  {ticker:"TSM Jan15'27 $185 Put",label:"Taiwan tail",type:"option",bg:"bp",qty:1,avg:6.331,pnl:20},
+  {ticker:"TSM Jan15'27 $200 Put",label:"Taiwan delta",type:"option",bg:"bp",qty:1,avg:8.051,pnl:34},
+  {ticker:"EWY Jun18 $115 Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:8.30,pnl:0}
 ];
 
-let pos = POSITIONS;
+// load from localStorage or fall back to defaults
+function loadPositions() {
+  try {
+    const saved = localStorage.getItem('hormuz_positions');
+    if (saved) return JSON.parse(saved);
+  } catch(_) {}
+  return DEFAULT_POSITIONS;
+}
+function savePositions(p) {
+  localStorage.setItem('hormuz_positions', JSON.stringify(p));
+}
+let pos = loadPositions();
 
 // ---- helpers ----
 function f(n,d=2){const v=parseFloat(n);if(isNaN(v))return'--';if(Math.abs(v)>9999)return'$'+Math.round(v).toLocaleString();if(Math.abs(v)>999)return'$'+v.toFixed(0);return'$'+v.toFixed(d);}
@@ -382,6 +453,88 @@ function updateReview() {
 
   el.innerHTML = parts.join(' ');
 }
+
+// ---- position editor modal ----
+function openModal() {
+  document.getElementById('json-input').value = JSON.stringify(pos, null, 2);
+  document.getElementById('json-err').textContent = '';
+  document.getElementById('add-err').textContent = '';
+  document.getElementById('pos-modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('pos-modal').classList.remove('open');
+}
+function switchTab(tab) {
+  document.getElementById('tab-json').classList.toggle('active', tab==='json');
+  document.getElementById('tab-add').classList.toggle('active', tab==='add');
+  document.getElementById('panel-json').style.display = tab==='json' ? '' : 'none';
+  document.getElementById('panel-add').style.display = tab==='add' ? '' : 'none';
+}
+function importJson() {
+  const errEl = document.getElementById('json-err');
+  try {
+    const raw = document.getElementById('json-input').value.trim();
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || !arr.length) throw new Error('Must be a non-empty array');
+    // validate required fields
+    for (const p of arr) {
+      if (!p.ticker || p.qty === undefined || p.avg === undefined) {
+        throw new Error('Each position needs ticker, qty, avg');
+      }
+      // ensure defaults
+      p.pnl = p.pnl || 0;
+      p.type = p.type || 'stock';
+      p.bg = p.bg || 'bo';
+      p.label = p.label || p.ticker;
+    }
+    pos = arr;
+    savePositions(pos);
+    render();
+    closeModal();
+    go();
+  } catch(e) {
+    errEl.textContent = e.message;
+  }
+}
+function exportJson() {
+  const clean = pos.map(({lastPrice, ...rest}) => rest);
+  const text = JSON.stringify(clean, null, 2);
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById('json-err').textContent = 'Copied to clipboard';
+    setTimeout(() => document.getElementById('json-err').textContent = '', 2000);
+  });
+}
+function resetPositions() {
+  pos = JSON.parse(JSON.stringify(DEFAULT_POSITIONS));
+  savePositions(pos);
+  document.getElementById('json-input').value = JSON.stringify(pos, null, 2);
+  render();
+  go();
+}
+function addPosition() {
+  const errEl = document.getElementById('add-err');
+  const ticker = document.getElementById('add-ticker').value.trim();
+  const label = document.getElementById('add-label').value.trim();
+  const type = document.getElementById('add-type').value;
+  const bg = document.getElementById('add-bg').value;
+  const qty = parseFloat(document.getElementById('add-qty').value);
+  const avg = parseFloat(document.getElementById('add-avg').value);
+  const pnl = parseFloat(document.getElementById('add-pnl').value) || 0;
+  if (!ticker) { errEl.textContent = 'Ticker is required'; return; }
+  if (isNaN(qty) || isNaN(avg)) { errEl.textContent = 'Qty and Avg price are required'; return; }
+  pos.push({ ticker, label: label || ticker, type, bg, qty, avg, pnl });
+  savePositions(pos);
+  render();
+  closeModal();
+  // clear form
+  ['add-ticker','add-label','add-qty','add-avg','add-pnl'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('add-pnl').value = '0';
+  go();
+}
+// close modal on overlay click
+document.getElementById('pos-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
 
 // ---- main refresh ----
 async function go(){

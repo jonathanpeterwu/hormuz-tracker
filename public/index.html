@@ -20,21 +20,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mcl{font-size:12px;color:var(--text2);margin-bottom:5px}.mcv{font-size:20px;font-weight:500}
 .sl{font-size:12px;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.75rem;margin-top:1.25rem}
 .up{color:var(--success)}.dn{color:var(--danger)}.fl{color:var(--text3)}.wn{color:var(--warning)}.inf{color:var(--info)}
-table{width:100%;border-collapse:collapse;table-layout:fixed}
-th{font-size:11px;color:var(--text3);font-weight:400;text-align:left;padding:0 8px 6px 0;border-bottom:.5px solid var(--border)}
-th.r,td.r{text-align:right;padding-right:0}
-td{font-size:13px;padding:6px 8px 6px 0;border-bottom:.5px solid var(--border);color:var(--text);vertical-align:middle}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;color:var(--text3);font-weight:400;text-align:left;padding:0 10px 8px 0;border-bottom:.5px solid var(--border);white-space:nowrap}
+th.r,td.r{text-align:right}
+td{font-size:13px;padding:8px 10px 8px 0;border-bottom:.5px solid var(--border);color:var(--text);vertical-align:middle;white-space:nowrap}
 tr:last-child td{border-bottom:none}
-tr:nth-child(even) td{background:var(--bg2)}
-tr.row-sell td{border-left:2px solid var(--danger);padding-left:6px}
-tr.row-buy td{border-left:2px solid var(--success);padding-left:6px}
-tr.group-hdr td{border-bottom:none;padding:10px 0 4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;background:transparent!important}
-.tk{font-weight:500;font-size:13px}
-.tk-sub{display:block;font-size:10px;color:var(--text3);font-weight:400;margin-top:1px}
+.tk{font-weight:500}
 .bg{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle}
 .bo{background:#FAEEDA;color:#633806}.bs{background:#FCEBEB;color:#791F1F}.bp{background:#EEEDFE;color:#3C3489}
 .bg2c{background:#FAEEDA;color:#854F0B}.ba{background:#EAF3DE;color:#27500A}.bcc{background:#E6F1FB;color:#0C447C}
-.pnl-wrap{text-align:right;line-height:1.2}.pnl-val{font-weight:500}.pnl-ret{font-size:10px;color:var(--text3)}
+.pnl-ret{font-size:10px;color:var(--text3);margin-left:4px}
 .review{background:var(--bg2);border:.5px solid var(--border);border-left:2px solid var(--bg-info);border-radius:var(--r);padding:14px 16px;margin-bottom:1.25rem;line-height:1.6}
 .review-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-weight:500}
 .review-text{font-size:13px;color:var(--text2)}
@@ -47,11 +42,11 @@ tr.group-hdr td{border-bottom:none;padding:10px 0 4px;font-size:11px;color:var(-
 .pmq{flex:1;font-size:13px;color:var(--text2);line-height:1.4}
 .est-cell{font-size:12px;line-height:1.3}.est-px{font-weight:500}.est-chg{font-size:11px}.est-via{font-size:9px;color:var(--text3)}
 .est-live{font-size:11px;color:var(--text3);font-style:italic}
-.sig-wrap{display:flex;align-items:center;gap:6px}
-.sig-bar{display:flex;height:10px;border-radius:2px;overflow:hidden;font-size:0;width:100px;flex-shrink:0}
+.sig-wrap{display:inline-flex;align-items:center;gap:5px}
+.sig-bar{display:flex;height:8px;border-radius:2px;overflow:hidden;font-size:0;width:56px;flex-shrink:0}
 .sig-bar span{display:block;transition:width .4s}
 .sig-buy{background:#16a34a}.sig-hold{background:#d97706}.sig-sell{background:#dc2626}
-.sig-act{font-size:10px;font-weight:600;white-space:nowrap}
+.sig-act{font-size:10px;font-weight:600;letter-spacing:.03em}
 .sig-act-buy{color:var(--success)}.sig-act-hold{color:var(--text3)}.sig-act-sell{color:var(--danger)}
 .pmbw{width:56px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0}
 .pmbf{height:100%;border-radius:2px;transition:width .6s}
@@ -118,10 +113,10 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="sl">Positions</div>
 <table>
   <thead><tr>
-    <th style="width:24%">Instrument</th><th style="width:6%">Qty</th>
-    <th style="width:10%">Avg</th><th style="width:10%">Last</th>
-    <th style="width:14%" id="th-est">Est.</th>
-    <th style="width:14%" class="r">P&L</th><th style="width:22%">Action</th>
+    <th>Instrument</th><th>Qty</th>
+    <th>Avg</th><th>Last</th>
+    <th id="th-est">Est.</th>
+    <th class="r">P&amp;L</th><th>Signal</th>
   </tr></thead>
   <tbody id="pb"></tbody>
 </table>
@@ -474,27 +469,15 @@ function render(){
   const thEst = document.getElementById('th-est');
   if (thEst) thEst.textContent = closed ? (mktState === 'weekend' ? 'Wknd est.' : 'O/N est.') : 'Est.';
 
-  // group: stocks first, then options
-  const stocks = pos.filter(p => p.type !== 'option');
-  const options = pos.filter(p => p.type === 'option');
-
-  function addGroupHeader(label, count) {
-    const tr = document.createElement('tr');
-    tr.className = 'group-hdr';
-    tr.innerHTML = `<td colspan="7">${label} (${count})</td>`;
-    tb.appendChild(tr);
-  }
-
-  function renderRow(p) {
-    tot += parseFloat(p.pnl) || 0;
-    const pnl = fp(p.pnl);
-    const lp = p.lastPrice ? f(p.lastPrice) : '<span class="sh">live</span>';
-    const sig = computeSignal(p);
-    const dominant = sig.buy >= sig.hold && sig.buy >= sig.sell ? 'buy' : sig.sell >= sig.hold ? 'sell' : 'hold';
+  pos.forEach(p=>{
+    tot+=parseFloat(p.pnl)||0;
+    const pnl=fp(p.pnl);
+    const lp=p.lastPrice ? f(p.lastPrice) : '<span class="sh">live</span>';
+    const sig=computeSignal(p);
 
     // return % from entry
     const retPct = p.lastPrice ? ((p.lastPrice - p.avg) / p.avg * 100) : null;
-    const retStr = retPct !== null ? `<span class="${retPct >= 0 ? 'up' : 'dn'}">${retPct >= 0 ? '+' : ''}${retPct.toFixed(1)}%</span>` : '';
+    const retStr = retPct !== null ? `<span class="pnl-ret ${retPct >= 0 ? 'up' : 'dn'}">${retPct >= 0 ? '+' : ''}${retPct.toFixed(1)}%</span>` : '';
 
     // estimate column
     let estHtml = '';
@@ -502,31 +485,20 @@ function render(){
     if (closed && e) {
       const cc = e.estChgPct >= 0 ? 'up' : 'dn';
       const sign = e.estChgPct >= 0 ? '+' : '';
-      estHtml = `<div class="est-cell"><span class="est-px">${f(e.estPrice)}</span> <span class="est-chg ${cc}">${sign}${e.estChgPct}%</span><div class="est-via">via ${e.proxy}</div></div>`;
-    } else if (!closed && p.type !== 'option') {
+      estHtml = `<div class="est-cell"><span class="est-px">${f(e.estPrice)}</span> <span class="est-chg ${cc}">${sign}${e.estChgPct}%</span><div class="est-via">via ${e.proxy} ×${e.beta}</div></div>`;
+    } else if (!closed && p.type === 'stock') {
       estHtml = '<span class="est-live">mkt open</span>';
     } else {
       estHtml = '<span class="est-live">—</span>';
     }
 
-    // P&L cell with return %
-    const pnlHtml = `<div class="pnl-wrap"><div class="pnl-val ${pnl.c}">${pnl.t}</div><div class="pnl-ret">${retStr}</div></div>`;
-
-    const tr = document.createElement('tr');
-    // accent row border for strong signals
-    if (dominant === 'sell' && sig.sell >= 45) tr.className = 'row-sell';
-    else if (dominant === 'buy' && sig.buy >= 45) tr.className = 'row-buy';
-
-    tr.innerHTML = `<td><span class="tk">${p.ticker}</span><span class="bg ${p.bg}">${p.label}</span></td><td>${p.qty}</td><td>${f(p.avg)}</td><td>${lp}</td><td>${estHtml}</td><td class="r">${pnlHtml}</td><td>${renderSignalBar(sig)}</td>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><span class="tk">${p.ticker}</span><span class="bg ${p.bg}">${p.label}</span></td><td>${p.qty}</td><td>${f(p.avg)}</td><td>${lp}</td><td>${estHtml}</td><td class="r"><span class="${pnl.c}">${pnl.t}</span> ${retStr}</td><td>${renderSignalBar(sig)}</td>`;
     tb.appendChild(tr);
-  }
-
-  if (stocks.length) { addGroupHeader('Stocks', stocks.length); stocks.forEach(renderRow); }
-  if (options.length) { addGroupHeader('Options', options.length); options.forEach(renderRow); }
-
-  const uel = document.getElementById('m2');
-  uel.textContent = (tot >= 0 ? '+' : '') + '$' + Math.round(tot).toLocaleString();
-  uel.className = 'mcv ' + (tot >= 0 ? 'up' : 'dn');
+  });
+  const uel=document.getElementById('m2');
+  uel.textContent=(tot>=0?'+':'')+'$'+Math.round(tot).toLocaleString();
+  uel.className='mcv '+(tot>=0?'up':'dn');
 }
 
 // ---- Yahoo Finance ----

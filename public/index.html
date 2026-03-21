@@ -23,7 +23,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 table{width:100%;border-collapse:collapse;table-layout:fixed}
 th{font-size:11px;color:var(--text3);font-weight:400;text-align:left;padding:0 6px 8px 0;border-bottom:.5px solid var(--border)}
 th.r,td.r{text-align:right;padding-right:0}
-td{font-size:13px;padding:9px 6px 9px 0;border-bottom:.5px solid var(--border);color:var(--text)}
+td{font-size:13px;padding:9px 8px 9px 0;border-bottom:.5px solid var(--border);color:var(--text)}
 tr:last-child td{border-bottom:none}
 .tk{font-weight:500}
 .bg{display:inline-block;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:5px;vertical-align:middle}
@@ -41,10 +41,11 @@ tr:last-child td{border-bottom:none}
 .pmq{flex:1;font-size:13px;color:var(--text2);line-height:1.4}
 .est-cell{font-size:12px;line-height:1.3}.est-px{font-weight:500}.est-chg{font-size:11px}.est-via{font-size:9px;color:var(--text3)}
 .est-live{font-size:11px;color:var(--text3);font-style:italic}
-.sig-bar{display:flex;height:14px;border-radius:3px;overflow:hidden;font-size:0;min-width:80px}
-.sig-bar span{display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:#fff;line-height:1;transition:width .4s}
+.sig-wrap{padding-left:6px}
+.sig-bar{display:flex;height:12px;border-radius:3px;overflow:hidden;font-size:0;max-width:160px}
+.sig-bar span{display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:#fff;line-height:1;transition:width .4s}
 .sig-buy{background:#16a34a}.sig-hold{background:#d97706}.sig-sell{background:#dc2626}
-.sig-lbl{font-size:10px;color:var(--text3);margin-top:2px;text-align:center;letter-spacing:.02em}
+.sig-lbl{font-size:9px;color:var(--text3);margin-top:2px;letter-spacing:.02em;max-width:160px}
 .pmbw{width:56px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0}
 .pmbf{height:100%;border-radius:2px;transition:width .6s}
 .pmv{font-size:15px;font-weight:500;min-width:40px;text-align:right}
@@ -110,23 +111,17 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="sl">Positions</div>
 <table>
   <thead><tr>
-    <th style="width:22%">Instrument</th><th style="width:5%">Qty</th>
+    <th style="width:20%">Instrument</th><th style="width:5%">Qty</th>
     <th style="width:9%">Avg</th><th style="width:9%">Last</th>
-    <th style="width:14%" id="th-est">Est.</th>
-    <th style="width:10%" class="r">P&L</th><th style="width:20%">Signal</th><th style="width:11%" class="r">Type</th>
+    <th style="width:13%" id="th-est">Est.</th>
+    <th style="width:9%" class="r">P&L</th><th style="width:26%">Signal</th><th style="width:9%" class="r">Type</th>
   </tr></thead>
   <tbody id="pb"></tbody>
 </table>
 
 <div class="div"></div>
-<div class="sl">Polymarket — exit signals</div>
-<div class="pml">
-  <div class="pmr"><div class="pmq">Ceasefire by Dec 31</div><div class="pmbw"><div class="pmbf" id="bd" style="width:69%;background:var(--bg-success)"></div></div><div class="pmv up" id="pd">69%</div></div>
-  <div class="pmr"><div class="pmq">Military action through Mar 31</div><div class="pmbw"><div class="pmbf" id="bm" style="width:90%;background:var(--bg-danger)"></div></div><div class="pmv dn" id="pm2">90%</div></div>
-  <div class="pmr"><div class="pmq">Hormuz normal by end of April</div><div class="pmbw"><div class="pmbf" id="bh" style="width:27%;background:var(--bg-warning)"></div></div><div class="pmv wn" id="ph">27%</div></div>
-  <div class="pmr"><div class="pmq">Crude hits $100 by end of March</div><div class="pmbw"><div class="pmbf" id="bo3" style="width:89%;background:var(--bg-warning)"></div></div><div class="pmv wn" id="po">89%</div></div>
-  <div class="pmr"><div class="pmq">20+ ships transit Hormuz in March</div><div class="pmbw"><div class="pmbf" id="bsh" style="width:35%;background:var(--bg-info)"></div></div><div class="pmv inf" id="ps">35%</div></div>
-</div>
+<div class="sl">Polymarket — exit signals <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)">(sorted by urgency)</span></div>
+<div class="pml" id="pm-list"></div>
 
 <div class="div"></div>
 <div class="sl">Hyperliquid perps — 24/7 pricing</div>
@@ -340,6 +335,46 @@ function computeEstimates(mids) {
   return est;
 }
 
+// ---- exit signals (Polymarket) ----
+const EXIT_SIGNALS = [
+  { id:'ceasefire', label:'Ceasefire by Dec 31', deadline:'2026-12-31', slug:'us-x-iran-ceasefire-by-december-31', color:'var(--bg-success)', pctClass:'up', pct:69, impact:'high', action:'Trim oil longs 30-50%' },
+  { id:'military', label:'Military action through Mar 31', deadline:'2026-03-31', slug:null, color:'var(--bg-danger)', pctClass:'dn', pct:90, impact:'high', action:'Confirms thesis — hold' },
+  { id:'hormuz', label:'Hormuz normal by end of April', deadline:'2026-04-30', slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30', color:'var(--bg-warning)', pctClass:'wn', pct:27, impact:'high', action:'If >60% trim oil' },
+  { id:'crude100', label:'Crude hits $100 by end of March', deadline:'2026-03-31', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:89, impact:'medium', action:'Take profit on USO/OILK' },
+  { id:'ships', label:'20+ ships transit Hormuz in March', deadline:'2026-03-31', slug:null, color:'var(--bg-info)', pctClass:'inf', pct:35, impact:'medium', action:'Watch vessel counts' },
+];
+
+function daysUntil(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return Math.max(0, Math.ceil((d - now) / 86400000));
+}
+
+function urgencyScore(sig) {
+  // Lower = more urgent. Combines deadline proximity with probability.
+  // High-probability events with near deadlines score lowest (most urgent).
+  const days = daysUntil(sig.deadline);
+  const probWeight = sig.pct >= 70 ? 0.3 : sig.pct >= 50 ? 0.6 : 0.9;
+  const impactMult = sig.impact === 'high' ? 0.7 : 1.0;
+  return days * probWeight * impactMult;
+}
+
+function renderExitSignals() {
+  const list = document.getElementById('pm-list');
+  if (!list) return;
+  const sorted = [...EXIT_SIGNALS].sort((a, b) => urgencyScore(a) - urgencyScore(b));
+  list.innerHTML = sorted.map(s => {
+    const days = daysUntil(s.deadline);
+    const daysLabel = days === 0 ? 'today' : days <= 7 ? days + 'd left' : Math.ceil(days / 7) + 'w left';
+    const urgency = days <= 10 ? 'dn' : days <= 30 ? 'wn' : 'fl';
+    return `<div class="pmr">
+      <div class="pmq">${s.label}<span style="font-size:10px;color:var(--text3);margin-left:6px" class="${urgency}">${daysLabel}</span></div>
+      <div class="pmbw"><div class="pmbf" id="b-${s.id}" style="width:${s.pct}%;background:${s.color}"></div></div>
+      <div class="pmv ${s.pctClass}" id="p-${s.id}">${s.pct}%</div>
+    </div>`;
+  }).join('');
+}
+
 // ---- status pills ----
 // dot states: 'pending' | 'ok' | 'err'
 function setStatus(id, state, label) {
@@ -419,7 +454,7 @@ function renderSignalBar(sig) {
   if (sig.hold > 0) parts.push(`<span class="sig-hold" style="width:${sig.hold}%">${sig.hold > 12 ? sig.hold + '%' : ''}</span>`);
   if (sig.sell > 0) parts.push(`<span class="sig-sell" style="width:${sig.sell}%">${sig.sell > 12 ? sig.sell + '%' : ''}</span>`);
   const dominant = sig.buy >= sig.hold && sig.buy >= sig.sell ? 'BUY' : sig.sell >= sig.hold ? 'SELL' : 'HOLD';
-  return `<div class="sig-bar">${parts.join('')}</div><div class="sig-lbl">${dominant}</div>`;
+  return `<div class="sig-wrap"><div class="sig-bar">${parts.join('')}</div><div class="sig-lbl">${dominant}</div></div>`;
 }
 
 // ---- render positions table ----
@@ -587,11 +622,20 @@ function applyPMData(pmData) {
   PM_MARKETS.forEach(m => {
     const pct = pmData[m.slug];
     if (pct === undefined) return;
-    const vel=document.getElementById(m.v); const bel=document.getElementById(m.b);
-    if(vel)vel.textContent=pct+'%'; if(bel)bel.style.width=pct+'%';
     if(m.slug.includes('ceasefire')) liveData.ceasefire=pct;
     if(m.slug.includes('hormuz')) liveData.hormuz=pct;
+    // update EXIT_SIGNALS with live data
+    const sig = EXIT_SIGNALS.find(s => s.slug === m.slug);
+    if (sig) sig.pct = pct;
   });
+  // update signal bar elements after render
+  EXIT_SIGNALS.forEach(s => {
+    const bel = document.getElementById('b-' + s.id);
+    const vel = document.getElementById('p-' + s.id);
+    if (bel) bel.style.width = s.pct + '%';
+    if (vel) vel.textContent = s.pct + '%';
+  });
+  renderExitSignals();
 }
 async function fPM(){
   setStatus('pm','pending','Polymarket...');
@@ -831,7 +875,7 @@ function invalidateCache() {
   ['hc_yf','hc_hl','hc_pm'].forEach(k => localStorage.removeItem(k));
 }
 
-render();go();setInterval(go,60000);
+renderExitSignals();render();go();setInterval(go,60000);
 </script>
 </body>
 </html>

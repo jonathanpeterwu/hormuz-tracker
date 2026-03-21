@@ -160,7 +160,7 @@ const POSITIONS=[
   {ticker:"TSM $185 Jan27 Put",label:"Taiwan tail",type:"option",bg:"bp",qty:1,avg:6.331,pnl:85.41,hl:null},
   {ticker:"TSM $200 Jan27 Put",label:"Taiwan delta",type:"option",bg:"bp",qty:1,avg:8.051,pnl:117.22,hl:null},
   {ticker:"EWY $115 Jun Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:8.30,pnl:0,hl:null},
-  {ticker:"BTC",label:"Bitcoin",type:"crypto",bg:"bcc",qty:0.0999,avg:72000,pnl:0,hl:"BTC"}
+  {ticker:"BTC",label:"Bitcoin",type:"crypto",bg:"bcc",qty:0.0999,avg:72000,pnl:0,hl:"BTC",yahooTicker:"BTC-USD"}
 ];
 
 let pos = POSITIONS;
@@ -232,7 +232,8 @@ async function fHL(){
   setStatus('hl','pending','Hyperliquid...');
   try{
     const mids=await fetch(HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'allMids'})}).then(r=>r.json());
-    const mp={BTC:['pbtc','cbtc'],XAU:['pxau','cxau'],ETH:['peth','ceth']};
+    // Map: coin -> [priceEl, changeEl]. Gold uses Yahoo (GLD), not HL.
+    const mp={BTC:['pbtc','cbtc'],ETH:['peth','ceth']};
     for(const[coin,[pid,cid]] of Object.entries(mp)){
       const mid=mids[coin]; if(!mid)continue;
       const el=document.getElementById(pid); if(el){el.textContent=f(mid);el.classList.remove('sh');}
@@ -246,14 +247,20 @@ async function fHL(){
         }
       }catch(_){}
     }
+    // Gold: use GLD last price from Yahoo (already fetched) as proxy
+    const gldPos = pos.find(p => p.ticker === 'GLD');
+    if(gldPos && gldPos.lastPrice){
+      const gel=document.getElementById('pxau'); if(gel){gel.textContent=f(gldPos.lastPrice);gel.classList.remove('sh');}
+      const gce=document.getElementById('cxau'); if(gce){gce.textContent='via GLD';gce.className='pch fl';}
+      liveData.gold = gldPos.lastPrice;
+    } else { liveData.gold = null; }
     // store perp prices for review
     liveData.btc = mids['BTC'] || null;
-    liveData.gold = mids['XAU'] || null;
-    // WTI proxy
+    // WTI proxy — HL @107 is a micro contract, multiply by factor or show raw
     const wti=mids['@107']||mids['WTI'];
     liveData.wti = wti || null;
     const wel=document.getElementById('pwti');
-    if(wel){wel.textContent=wti?f(wti):'~$112';wel.classList.remove('sh');document.getElementById('cwti').textContent=wti?'perp mid':'est';}
+    if(wel){wel.textContent=wti?f(wti):'—';wel.classList.remove('sh');document.getElementById('cwti').textContent=wti?'perp mid':'—';}
     // HL drives perp display only -- position prices come from Yahoo
     const btcPx = mids['BTC'] ? '  | BTC '+f(mids['BTC'],0) : '';
     setStatus('hl','ok','Hyperliquid'+btcPx);
@@ -276,7 +283,9 @@ async function fPM(){
     try{
       const data=await fetch(PM_URL + '?slug=' + m.slug).then(r=>r.json());
       if(data&&data.length){
-        const pct=Math.round(parseFloat((data[0].outcomePrices||[])[0]||0)*100);
+        let prices=data[0].outcomePrices||[];
+        if(typeof prices==='string') try{prices=JSON.parse(prices)}catch(_){prices=[]}
+        const pct=Math.round(parseFloat(prices[0]||0)*100);
         const vel=document.getElementById(m.v); const bel=document.getElementById(m.b);
         if(vel)vel.textContent=pct+'%'; if(bel)bel.style.width=pct+'%'; ok++;
         if(m.slug.includes('ceasefire')) liveData.ceasefire=pct;
@@ -297,69 +306,79 @@ function updateReview() {
   const el = document.getElementById('review-text');
   if (!el) return;
 
-  // compute total P&L from positions
-  let totalPnl = 0;
-  pos.forEach(p => { totalPnl += parseFloat(p.pnl) || 0; });
-  const pnlStr = (totalPnl >= 0 ? '+' : '') + '$' + Math.round(Math.abs(totalPnl)).toLocaleString();
+  // compute total P&L and cost basis for % return
+  let totalPnl = 0, totalCost = 0;
+  pos.forEach(p => {
+    totalPnl += parseFloat(p.pnl) || 0;
+    totalCost += p.qty * p.avg;
+  });
+  const pnlPct = totalCost > 0 ? ((totalPnl / totalCost) * 100).toFixed(1) : '0';
+  const pnlStr = (totalPnl >= 0 ? '+' : '-') + '$' + Math.round(Math.abs(totalPnl)).toLocaleString();
 
-  // gather signals
+  // compute per-position % moves from avg (using lastPrice if available)
+  function posReturn(ticker) {
+    const p = pos.find(x => x.ticker === ticker);
+    if (!p || !p.lastPrice) return null;
+    return ((p.lastPrice - p.avg) / p.avg * 100).toFixed(1);
+  }
+  const gushRet = posReturn('GUSH');
+  const usoRet = posReturn('USO');
+  const btcRet = posReturn('BTC');
+
   const cf = liveData.ceasefire;
   const hz = liveData.hormuz;
-  const wti = liveData.wti;
-  const gold = liveData.gold;
+  const btcVal = liveData.btc ? parseFloat(liveData.btc) : 0;
 
   let parts = [];
 
-  // sentence 1: portfolio status + key price drivers
-  let s1 = 'Portfolio is <strong>' + (totalPnl >= 0 ? 'green' : 'red') + ' at ' + pnlStr + '</strong> unrealized';
-  if (wti && gold) {
-    s1 += ' with WTI at <strong>' + f(wti) + '</strong> and gold at <strong>' + f(gold, 0) + '</strong>';
-  } else if (wti) {
-    s1 += ' with WTI at <strong>' + f(wti) + '</strong>';
+  // sentence 1: portfolio P&L with %, best/worst mover, cost of carry
+  let s1 = 'Book is <strong>' + pnlStr + ' (' + pnlPct + '%)</strong> on $' + Math.round(totalCost).toLocaleString() + ' deployed';
+  // highlight best mover
+  const movers = [{t:'GUSH',r:gushRet},{t:'USO',r:usoRet},{t:'BTC',r:btcRet}].filter(m=>m.r!==null);
+  if (movers.length) {
+    movers.sort((a,b) => Math.abs(parseFloat(b.r)) - Math.abs(parseFloat(a.r)));
+    const best = movers[0];
+    const bv = parseFloat(best.r);
+    s1 += ' — <strong class="' + (bv>=0?'up':'dn') + '">' + best.t + ' ' + (bv>=0?'+':'') + best.r + '%</strong> from entry is your biggest mover';
   }
   s1 += '.';
   parts.push(s1);
 
-  // sentence 2: polymarket signal assessment + action
+  // sentence 2: EV-weighted Polymarket read with concrete action
   if (cf !== null || hz !== null) {
     let s2 = '';
     if (cf !== null && cf >= 70) {
-      s2 = 'Ceasefire odds at <strong class="up">' + cf + '%</strong> have breached the 70% trim trigger — <strong>start scaling out of oil longs (GUSH, USO, OILK)</strong> and tighten stops on SQQQ.';
-    } else if (cf !== null && cf >= 55) {
-      s2 = 'Ceasefire odds climbing to <strong class="wn">' + cf + '%</strong> are approaching the 70% exit zone — <strong>prepare limit orders to trim ⅓ of oil positions</strong> if momentum continues.';
-    } else if (hz !== null && hz <= 20) {
-      s2 = 'Hormuz normalization at only <strong class="dn">' + hz + '%</strong> signals prolonged disruption — <strong>hold core oil thesis and consider adding on dips</strong> in GUSH or USO.';
-    } else {
-      let signals = [];
-      if (cf !== null) signals.push('ceasefire at ' + cf + '%');
-      if (hz !== null) signals.push('Hormuz normalization at ' + hz + '%');
-      s2 = 'Polymarket shows ' + signals.join(', ') + ' — <strong>no exit triggers hit, maintain positions</strong> and monitor for shifts above 70% ceasefire.';
+      const evLoss = cf; // cf% chance thesis dies
+      s2 = 'Ceasefire at <strong class="up">' + cf + '%</strong> means ' + evLoss + '% implied probability your oil longs go to zero edge — that\'s <strong>-EV to hold full size, trim 30-50% of GUSH/USO/OILK now</strong> and redeploy into gold or cash.';
+    } else if (cf !== null && cf >= 50) {
+      s2 = 'Ceasefire at <strong class="wn">' + cf + '%</strong> is a coin flip — oil longs are <strong>barely +EV at current sizing</strong>. Set hard stops at breakeven on USO/OILK and prepare to cut ⅓ if this crosses 60%.';
+    } else if (cf !== null && cf < 50 && hz !== null && hz <= 30) {
+      const edge = 100 - cf;
+      s2 = 'Ceasefire only ' + cf + '% with Hormuz normalization at ' + hz + '% — <strong>' + edge + '% implied odds the disruption holds, thesis is +EV</strong>. Oil longs have room to run; consider adding 10-15% to GUSH on any pullback.';
+    } else if (cf !== null && cf < 50) {
+      s2 = 'Ceasefire at ' + cf + '% means <strong>' + (100-cf) + '% the conflict persists — strongly +EV to hold</strong>. No trim triggers hit, keep full oil exposure and let winners ride.';
+    } else if (hz !== null) {
+      s2 = 'Hormuz normalization at ' + hz + '% — ' + (hz<=30 ? '<strong>disruption persists, +EV to hold oil thesis at full size</strong>.' : hz>=60 ? '<strong>shipping recovery accelerating, trim 25% of oil longs before edge erodes</strong>.' : 'neutral zone, <strong>hold positions but tighten stops to protect gains</strong>.');
     }
     parts.push(s2);
   }
 
-  // sentence 3: commodity/crypto read + tactical suggestion
-  if (wti || gold || liveData.btc) {
-    let s3 = '';
-    const wtiVal = wti ? parseFloat(wti) : 0;
-    const goldVal = gold ? parseFloat(gold) : 0;
-    const btcVal = liveData.btc ? parseFloat(liveData.btc) : 0;
-
-    if (wtiVal >= 95) {
-      s3 = 'WTI pushing <strong class="up">' + f(wti) + '</strong> is nearing the $100 target — <strong>set trailing stops on USO and take partial profits on OILK</strong>.';
-    } else if (goldVal >= 3200) {
-      s3 = 'Gold at <strong class="up">' + f(gold, 0) + '</strong> confirms safe-haven bid — <strong>hold GLD position and watch for WTI follow-through above $95</strong>.';
-    } else if (btcVal && btcVal < 70000) {
-      s3 = 'BTC weak at <strong class="dn">' + f(btcVal, 0) + '</strong> suggests risk-off — <strong>thesis intact, keep SQQQ hedge and watch crypto for capitulation entry</strong>.';
-    } else {
-      let reads = [];
-      if (wti) reads.push('WTI ' + f(wti));
-      if (gold) reads.push('gold ' + f(gold, 0));
-      if (btcVal) reads.push('BTC ' + f(btcVal, 0));
-      s3 = 'Perps show ' + reads.join(', ') + ' — <strong>no extreme levels hit, stay the course and revisit sizing if WTI breaks $95 or gold clears $3,200</strong>.';
-    }
-    parts.push(s3);
+  // sentence 3: cross-asset conviction call
+  let s3 = '';
+  const gushV = gushRet ? parseFloat(gushRet) : 0;
+  if (gushV >= 40) {
+    s3 = 'GUSH +' + gushRet + '% has hit the 40-50% trim zone from exit trigger #3 — <strong>this is a sell, take 30-50% off and lock in gains</strong>. Rebalance into GLD or SQQQ if you want to stay hedged.';
+  } else if (gushV >= 25) {
+    s3 = 'GUSH +' + gushRet + '% is running but hasn\'t hit the 40% aggressive trim level — <strong>raise stops to +15% from entry and let it ride</strong>. Risk/reward still favors holding.';
+  } else if (btcVal && btcVal < 70000) {
+    s3 = 'BTC at <strong class="dn">' + f(btcVal, 0) + '</strong>' + (btcRet ? ' (' + (parseFloat(btcRet)>=0?'+':'') + btcRet + '% vs entry)' : '') + ' confirms risk-off regime — <strong>SQQQ hedge is paying, keep it and size up if BTC breaks $65K</strong>.';
+  } else if (btcVal && btcVal > 85000) {
+    s3 = 'BTC at <strong class="up">' + f(btcVal, 0) + '</strong> is risk-on which conflicts with the war thesis — <strong>watch for divergence, if oil falls while BTC rallies consider cutting 20% of oil longs</strong>.';
+  } else {
+    let conviction = cf !== null && cf < 40 ? 'high' : cf !== null && cf < 60 ? 'moderate' : 'weakening';
+    s3 = 'Cross-asset signals show <strong>' + conviction + ' conviction</strong> in the disruption thesis — ' + (conviction === 'high' ? '<strong>hold full size, this is +EV across the board</strong>.' : conviction === 'moderate' ? '<strong>hold but set trailing stops at +10% from current levels</strong>.' : '<strong>start scaling out 15-20% of oil exposure, edge is thinning</strong>.');
   }
+  parts.push(s3);
 
   el.innerHTML = parts.join(' ');
 }

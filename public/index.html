@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hormuz War Room</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <style>
 :root{--bg:#fff;--bg2:#f8fafc;--text:#0f172a;--text2:#475569;--text3:#94a3b8;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--info:#2563eb;--bg-success:#22c55e;--bg-warning:#f59e0b;--bg-danger:#ef4444;--bg-info:#3b82f6;--border:rgba(15,23,42,0.12);--border2:rgba(15,23,42,0.25);--border-warn:#f59e0b;--r:8px;--rl:12px}
 @media(prefers-color-scheme:dark){:root{--bg:#0f172a;--bg2:#1e293b;--text:#f1f5f9;--text2:#94a3b8;--text3:#475569;--success:#4ade80;--warning:#fbbf24;--danger:#f87171;--info:#60a5fa;--bg-success:#16a34a;--bg-warning:#d97706;--bg-danger:#dc2626;--bg-info:#2563eb;--border:rgba(241,245,249,0.12);--border2:rgba(241,245,249,0.25);--border-warn:#fbbf24}}
@@ -28,6 +29,10 @@ tr:last-child td{border-bottom:none}
 .bg{display:inline-block;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:5px;vertical-align:middle}
 .bo{background:#FAEEDA;color:#633806}.bs{background:#FCEBEB;color:#791F1F}.bp{background:#EEEDFE;color:#3C3489}
 .bg2c{background:#FAEEDA;color:#854F0B}.ba{background:#EAF3DE;color:#27500A}.bcc{background:#E6F1FB;color:#0C447C}
+.review{background:var(--bg2);border:.5px solid var(--border);border-left:2px solid var(--bg-info);border-radius:var(--r);padding:14px 16px;margin-bottom:1.25rem;line-height:1.6}
+.review-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-weight:500}
+.review-text{font-size:13px;color:var(--text2)}
+.review-text strong{color:var(--text);font-weight:500}
 .sh{animation:sm 1s infinite;color:var(--text3)}
 @keyframes sm{0%,100%{opacity:.3}50%{opacity:.9}}
 .div{height:.5px;background:var(--border);margin:1.25rem 0}
@@ -72,6 +77,11 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div class="mc"><div class="mcl">Daily P&L</div><div class="mcv up" id="m1">+$825</div></div>
   <div class="mc"><div class="mcl">Unrealized P&L</div><div class="mcv up" id="m2">—</div></div>
   <div class="mc"><div class="mcl">Cash / leverage</div><div class="mcv dn" id="m3">-$15.1K</div></div>
+</div>
+
+<div class="review" id="review-box">
+  <div class="review-label">Portfolio review</div>
+  <div class="review-text" id="review-text">Waiting for live data...</div>
 </div>
 
 <div class="sl">Positions</div>
@@ -236,8 +246,12 @@ async function fHL(){
         }
       }catch(_){}
     }
+    // store perp prices for review
+    liveData.btc = mids['BTC'] || null;
+    liveData.gold = mids['XAU'] || null;
     // WTI proxy
     const wti=mids['@107']||mids['WTI'];
+    liveData.wti = wti || null;
     const wel=document.getElementById('pwti');
     if(wel){wel.textContent=wti?f(wti):'~$112';wel.classList.remove('sh');document.getElementById('cwti').textContent=wti?'perp mid':'est';}
     // HL drives perp display only -- position prices come from Yahoo
@@ -265,12 +279,89 @@ async function fPM(){
         const pct=Math.round(parseFloat((data[0].outcomePrices||[])[0]||0)*100);
         const vel=document.getElementById(m.v); const bel=document.getElementById(m.b);
         if(vel)vel.textContent=pct+'%'; if(bel)bel.style.width=pct+'%'; ok++;
+        if(m.slug.includes('ceasefire')) liveData.ceasefire=pct;
+        if(m.slug.includes('hormuz')) liveData.hormuz=pct;
       }
     }catch(_){}
   }
   if(ok>0) setStatus('pm','ok','Polymarket  | '+ok+'/'+ms.length+' live');
   else      setStatus('pm','err','Polymarket  | failed');
   return ok;
+}
+
+// ---- live data store for review ----
+let liveData = { ceasefire: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null };
+
+// ---- portfolio review generator ----
+function updateReview() {
+  const el = document.getElementById('review-text');
+  if (!el) return;
+
+  // compute total P&L from positions
+  let totalPnl = 0;
+  pos.forEach(p => { totalPnl += parseFloat(p.pnl) || 0; });
+  const pnlStr = (totalPnl >= 0 ? '+' : '') + '$' + Math.round(Math.abs(totalPnl)).toLocaleString();
+
+  // gather signals
+  const cf = liveData.ceasefire;
+  const hz = liveData.hormuz;
+  const wti = liveData.wti;
+  const gold = liveData.gold;
+
+  let parts = [];
+
+  // sentence 1: portfolio status + key price drivers
+  let s1 = 'Portfolio is <strong>' + (totalPnl >= 0 ? 'green' : 'red') + ' at ' + pnlStr + '</strong> unrealized';
+  if (wti && gold) {
+    s1 += ' with WTI at <strong>' + f(wti) + '</strong> and gold at <strong>' + f(gold, 0) + '</strong>';
+  } else if (wti) {
+    s1 += ' with WTI at <strong>' + f(wti) + '</strong>';
+  }
+  s1 += '.';
+  parts.push(s1);
+
+  // sentence 2: polymarket signal assessment + action
+  if (cf !== null || hz !== null) {
+    let s2 = '';
+    if (cf !== null && cf >= 70) {
+      s2 = 'Ceasefire odds at <strong class="up">' + cf + '%</strong> have breached the 70% trim trigger — <strong>start scaling out of oil longs (GUSH, USO, OILK)</strong> and tighten stops on SQQQ.';
+    } else if (cf !== null && cf >= 55) {
+      s2 = 'Ceasefire odds climbing to <strong class="wn">' + cf + '%</strong> are approaching the 70% exit zone — <strong>prepare limit orders to trim ⅓ of oil positions</strong> if momentum continues.';
+    } else if (hz !== null && hz <= 20) {
+      s2 = 'Hormuz normalization at only <strong class="dn">' + hz + '%</strong> signals prolonged disruption — <strong>hold core oil thesis and consider adding on dips</strong> in GUSH or USO.';
+    } else {
+      let signals = [];
+      if (cf !== null) signals.push('ceasefire at ' + cf + '%');
+      if (hz !== null) signals.push('Hormuz normalization at ' + hz + '%');
+      s2 = 'Polymarket shows ' + signals.join(', ') + ' — <strong>no exit triggers hit, maintain positions</strong> and monitor for shifts above 70% ceasefire.';
+    }
+    parts.push(s2);
+  }
+
+  // sentence 3: commodity/crypto read + tactical suggestion
+  if (wti || gold || liveData.btc) {
+    let s3 = '';
+    const wtiVal = wti ? parseFloat(wti) : 0;
+    const goldVal = gold ? parseFloat(gold) : 0;
+    const btcVal = liveData.btc ? parseFloat(liveData.btc) : 0;
+
+    if (wtiVal >= 95) {
+      s3 = 'WTI pushing <strong class="up">' + f(wti) + '</strong> is nearing the $100 target — <strong>set trailing stops on USO and take partial profits on OILK</strong>.';
+    } else if (goldVal >= 3200) {
+      s3 = 'Gold at <strong class="up">' + f(gold, 0) + '</strong> confirms safe-haven bid — <strong>hold GLD position and watch for WTI follow-through above $95</strong>.';
+    } else if (btcVal && btcVal < 70000) {
+      s3 = 'BTC weak at <strong class="dn">' + f(btcVal, 0) + '</strong> suggests risk-off — <strong>thesis intact, keep SQQQ hedge and watch crypto for capitulation entry</strong>.';
+    } else {
+      let reads = [];
+      if (wti) reads.push('WTI ' + f(wti));
+      if (gold) reads.push('gold ' + f(gold, 0));
+      if (btcVal) reads.push('BTC ' + f(btcVal, 0));
+      s3 = 'Perps show ' + reads.join(', ') + ' — <strong>no extreme levels hit, stay the course and revisit sizing if WTI breaks $95 or gold clears $3,200</strong>.';
+    }
+    parts.push(s3);
+  }
+
+  el.innerHTML = parts.join(' ');
 }
 
 // ---- main refresh ----
@@ -280,6 +371,7 @@ async function go(){
   setStatus('hl','pending','Hyperliquid...');
   setStatus('pm','pending','Polymarket...');
   await Promise.all([fYahoo(), fHL(), fPM()]);
+  updateReview();
   const t=new Date().toLocaleTimeString();
   document.getElementById('ts').textContent=t;
   document.getElementById('lts').textContent='Updated '+t;

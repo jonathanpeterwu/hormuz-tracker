@@ -30,6 +30,8 @@ tr:last-child td{border-bottom:none}
 .bo{background:#FAEEDA;color:#633806}.bs{background:#FCEBEB;color:#791F1F}.bp{background:#EEEDFE;color:#3C3489}
 .bg2c{background:#FAEEDA;color:#854F0B}.ba{background:#EAF3DE;color:#27500A}.bcc{background:#E6F1FB;color:#0C447C}
 .pnl-ret{font-size:10px;color:var(--text3);margin-left:4px}
+.hl-deltas{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+.hl-d{font-size:10px;line-height:1}.hl-d-lbl{color:var(--text3);margin-right:1px}
 .review{background:var(--bg2);border:.5px solid var(--border);border-left:2px solid var(--bg-info);border-radius:var(--r);padding:14px 16px;margin-bottom:1.25rem;line-height:1.6}
 .review-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-weight:500}
 .review-text{font-size:13px;color:var(--text2)}
@@ -128,10 +130,10 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="div"></div>
 <div class="sl">Hyperliquid perps — 24/7 pricing</div>
 <div class="pg">
-  <div class="pc"><div class="pl2">BTC</div><div class="pp sh" id="pbtc">—</div><div class="pch fl" id="cbtc">—</div></div>
-  <div class="pc"><div class="pl2">Gold (XAU)</div><div class="pp sh" id="pxau">—</div><div class="pch fl" id="cxau">—</div></div>
-  <div class="pc"><div class="pl2">ETH</div><div class="pp sh" id="peth">—</div><div class="pch fl" id="ceth">—</div></div>
-  <div class="pc"><div class="pl2">WTI proxy</div><div class="pp sh" id="pwti">—</div><div class="pch fl" id="cwti">—</div></div>
+  <div class="pc"><div class="pl2">BTC</div><div class="pp sh" id="pbtc">—</div><div class="hl-deltas" id="dbtc"></div></div>
+  <div class="pc"><div class="pl2">Gold (XAU)</div><div class="pp sh" id="pxau">—</div><div class="hl-deltas" id="dxau"></div></div>
+  <div class="pc"><div class="pl2">ETH</div><div class="pp sh" id="peth">—</div><div class="hl-deltas" id="deth"></div></div>
+  <div class="pc"><div class="pl2">WTI proxy</div><div class="pp sh" id="pwti">—</div><div class="hl-deltas" id="dwti"></div></div>
 </div>
 
 <div class="div"></div>
@@ -558,14 +560,20 @@ function applyHLMids(mids) {
   const gldPos = pos.find(p => p.ticker === 'GLD');
   if(gldPos && gldPos.lastPrice){
     const gel=document.getElementById('pxau'); if(gel){gel.textContent=f(gldPos.lastPrice);gel.classList.remove('sh');}
-    const gce=document.getElementById('cxau'); if(gce){gce.textContent='via GLD';gce.className='pch fl';}
     liveData.gold = gldPos.lastPrice;
+    // show return from avg as the XAU delta (no HL candles for gold)
+    const dxau=document.getElementById('dxau');
+    if(dxau && gldPos.avg){
+      const pct=((gldPos.lastPrice-gldPos.avg)/gldPos.avg)*100;
+      const cls=pct>0?'up':pct<0?'dn':'fl';
+      dxau.innerHTML=`<span class="hl-d"><span class="hl-d-lbl">entry</span><span class="${cls}">${pct>0?'+':''}${pct.toFixed(1)}%</span></span><span class="hl-d" style="color:var(--text3)">via GLD</span>`;
+    }
   } else { liveData.gold = null; }
   liveData.btc = mids['BTC'] || null;
   const wti=mids['@107']||mids['WTI'];
   liveData.wti = wti || null;
   const wel=document.getElementById('pwti');
-  if(wel){wel.textContent=wti?f(wti):'—';wel.classList.remove('sh');document.getElementById('cwti').textContent=wti?'perp mid':'—';}
+  if(wel){wel.textContent=wti?f(wti):'—';wel.classList.remove('sh');}
 }
 async function fHL(){
   setStatus('hl','pending','Hyperliquid...');
@@ -596,19 +604,32 @@ async function fHL(){
     } else {
       lastEstimates = {};
     }
-    // fetch candle data for 24h change
-    const mp={BTC:['pbtc','cbtc'],ETH:['peth','ceth']};
-    for(const[coin,[pid,cid]] of Object.entries(mp)){
-      const mid=mids[coin]; if(!mid)continue;
+    // fetch multi-timeframe candle data for deltas
+    const hlCoins={BTC:'dbtc',ETH:'deth','@107':'dwti'};
+    const tfDefs=[
+      {label:'1H',interval:'1h',ms:3600000},
+      {label:'1D',interval:'1d',ms:86400000},
+      {label:'1W',interval:'1d',ms:7*86400000},
+      {label:'1M',interval:'1d',ms:30*86400000}
+    ];
+    const now=Date.now();
+    for(const[coin,did] of Object.entries(hlCoins)){
+      const mid=parseFloat(mids[coin]||mids['WTI']); if(!mid)continue;
+      const el=document.getElementById(did); if(!el)continue;
       try{
-        const now=Date.now();
-        const cc=await fetch(HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'candleSnapshot',req:{coin,interval:'1d',startTime:now-86400000,endTime:now}})}).then(r=>r.json());
-        if(cc&&cc.length){
-          const l=cc[cc.length-1]; const pct=((parseFloat(l.c)-parseFloat(l.o))/parseFloat(l.o))*100;
-          const cel=document.getElementById(cid);
-          if(cel){cel.textContent=(pct>0?'+':'')+pct.toFixed(2)+'%';cel.className='pch '+(pct>0?'up':pct<0?'dn':'fl');}
-        }
-      }catch(_){}
+        // fetch enough history for 1M
+        const cc=await fetch(HL_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'candleSnapshot',req:{coin:coin==='@107'?'@107':coin,interval:'1h',startTime:now-31*86400000,endTime:now}})}).then(r=>r.json());
+        if(!cc||!cc.length){el.innerHTML='';continue;}
+        const spans=tfDefs.map(tf=>{
+          const cutoff=now-tf.ms;
+          const candle=cc.find(c=>parseFloat(c.t)>=cutoff)||cc[0];
+          const open=parseFloat(candle.o);
+          const pct=((mid-open)/open)*100;
+          const cls=pct>0?'up':pct<0?'dn':'fl';
+          return `<span class="hl-d"><span class="hl-d-lbl">${tf.label}</span><span class="${cls}">${pct>0?'+':''}${pct.toFixed(1)}%</span></span>`;
+        });
+        el.innerHTML=spans.join('');
+      }catch(_){el.innerHTML='';}
     }
     const btcPx = mids['BTC'] ? '  | BTC '+f(mids['BTC'],0) : '';
     const estTag = mktState !== 'open' ? '  | est. active' : '';

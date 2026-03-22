@@ -419,8 +419,14 @@ function computeSignal(p) {
 
   const cf = liveData.ceasefire; // ceasefire prob (0-100)
   const hz = liveData.hormuz;    // hormuz normalization (0-100)
-  const retPct = p.lastPrice ? ((p.lastPrice - p.avg) / p.avg) * 100 : null;
+  // compute return % — use lastPrice when available, fall back to pnl/costBasis for options
   const costBasis = p.qty * p.avg;
+  let retPct = null;
+  if (p.lastPrice) {
+    retPct = ((p.lastPrice - p.avg) / p.avg) * 100;
+  } else if (costBasis > 0 && p.pnl !== undefined) {
+    retPct = (parseFloat(p.pnl) / costBasis) * 100;
+  }
 
   // --- P&L momentum signal ---
   if (retPct !== null) {
@@ -435,24 +441,24 @@ function computeSignal(p) {
   }
 
   // --- Oil-specific: Polymarket ceasefire / Hormuz signals ---
+  // Scaled down: ceasefire is one input among several, not a sledgehammer
   const isOil = ['bo'].includes(p.bg);
   const isShort = ['bs','bp'].includes(p.bg);
   if (cf !== null) {
     if (isOil) {
-      if (cf >= 70) { sell += 25; buy -= 15; hold -= 10; }
-      else if (cf >= 50) { sell += 10; hold += 5; buy -= 15; }
-      else if (cf < 30) { buy += 15; sell -= 10; hold -= 5; }
-      else { hold += 5; buy -= 3; sell -= 2; }
+      if (cf >= 70) { sell += 16; buy -= 9; hold -= 7; }
+      else if (cf >= 50) { sell += 6; hold += 4; buy -= 10; }
+      else if (cf < 30) { buy += 10; sell -= 6; hold -= 4; }
+      else { hold += 4; buy -= 2; sell -= 2; }
     }
     if (isShort) {
-      // shorts benefit from conflict continuing
-      if (cf < 30) { hold += 10; buy += 5; sell -= 15; }
-      else if (cf >= 70) { sell += 15; buy -= 10; hold -= 5; }
+      if (cf < 30) { hold += 6; buy += 4; sell -= 10; }
+      else if (cf >= 70) { sell += 8; buy -= 5; hold -= 3; }
     }
   }
   if (hz !== null && isOil) {
-    if (hz <= 20) { buy += 8; sell -= 5; hold -= 3; }
-    else if (hz >= 60) { sell += 12; buy -= 8; hold -= 4; }
+    if (hz <= 20) { buy += 6; sell -= 3; hold -= 3; }
+    else if (hz >= 60) { sell += 8; buy -= 5; hold -= 3; }
   }
 
   // --- Exit trigger rules (GUSH specific) ---
@@ -461,7 +467,7 @@ function computeSignal(p) {
   }
 
   // --- Size-aware: large positions bias toward trim ---
-  if (costBasis > 10000) { sell += 4; buy -= 2; hold -= 2; }
+  if (costBasis > 10000) { sell += 3; buy -= 1; hold -= 2; }
 
   // --- Agri/Gold: neutral lean hold ---
   if (['ba','bg2c'].includes(p.bg)) { hold += 8; buy -= 4; sell -= 4; }

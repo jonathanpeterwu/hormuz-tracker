@@ -457,7 +457,10 @@ function renderSignalBar(sig) {
   if (sig.buy > 0) parts.push(`<span class="sig-buy" style="width:${sig.buy}%"></span>`);
   if (sig.hold > 0) parts.push(`<span class="sig-hold" style="width:${sig.hold}%"></span>`);
   if (sig.sell > 0) parts.push(`<span class="sig-sell" style="width:${sig.sell}%"></span>`);
-  const dominant = sig.buy >= sig.hold && sig.buy >= sig.sell ? 'BUY' : sig.sell >= sig.hold ? 'SELL' : 'HOLD';
+  const T = 7; // buffer: must lead hold by ≥T points to show BUY/SELL
+  const dominant = sig.buy > sig.sell && sig.buy > sig.hold && (sig.buy - sig.hold) >= T ? 'BUY'
+                 : sig.sell > sig.buy && sig.sell > sig.hold && (sig.sell - sig.hold) >= T ? 'SELL'
+                 : 'HOLD';
   const actClass = dominant === 'BUY' ? 'sig-act-buy' : dominant === 'SELL' ? 'sig-act-sell' : 'sig-act-hold';
   return `<div class="sig-wrap"><div class="sig-bar">${parts.join('')}</div><span class="sig-act ${actClass}">${dominant}</span></div>`;
 }

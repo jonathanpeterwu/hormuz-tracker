@@ -311,6 +311,29 @@ function saveHLCloses(mids) {
   hlCloses = snap;
   try { localStorage.setItem('hc_hlCloses', JSON.stringify(snap)); } catch(_) {}
 }
+async function bootstrapHLCloses(mids) {
+  // When hlCloses is empty (first visit on weekend), fetch last Friday 4pm candle as reference
+  const coins = [...new Set(Object.values(HL_PROXY).map(p => p.coin))];
+  const snap = {};
+  const now = Date.now();
+  for (const coin of coins) {
+    try {
+      // Fetch daily candles for past 5 days to find the most recent market close
+      const cc = await fetch(HL_URL, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'candleSnapshot',req:{coin,interval:'1d',startTime:now-5*86400000,endTime:now}})}).then(r=>r.json());
+      if (cc && cc.length >= 2) {
+        // Use the second-to-last candle's close (last completed day)
+        const candle = cc[cc.length - 2];
+        snap[coin] = parseFloat(candle.c);
+      } else if (cc && cc.length === 1) {
+        snap[coin] = parseFloat(cc[0].o);
+      }
+    } catch(_) {}
+  }
+  if (Object.keys(snap).length) {
+    hlCloses = snap;
+    try { localStorage.setItem('hc_hlCloses', JSON.stringify(snap)); } catch(_) {}
+  }
+}
 loadHLCloses();
 
 function computeEstimates(mids) {
@@ -477,7 +500,7 @@ function render(){
   pos.forEach(p=>{
     tot+=parseFloat(p.pnl)||0;
     const pnl=fp(p.pnl);
-    const lp=p.lastPrice ? f(p.lastPrice) : '<span class="sh">live</span>';
+    const lp=p.lastPrice ? f(p.lastPrice) : (p.type==='option' ? '<span style="color:var(--text3)">'+f(p.avg)+'</span>' : '<span class="sh">—</span>');
     const sig=computeSignal(p);
 
     // return % from entry
@@ -585,7 +608,10 @@ async function fHL(){
   if (cached) {
     applyHLMids(cached.data);
     const ms = getMarketState();
-    if (ms !== 'open') lastEstimates = computeEstimates(cached.data);
+    if (ms !== 'open') {
+      if (!Object.keys(hlCloses).length) await bootstrapHLCloses(cached.data);
+      lastEstimates = computeEstimates(cached.data);
+    }
     if (cached.fresh) {
       const btcPx = cached.data['BTC'] ? '  | BTC '+f(cached.data['BTC'],0) : '';
       const estTag = ms !== 'open' ? '  | est. active' : '';
@@ -603,6 +629,8 @@ async function fHL(){
     if (mktState === 'open') saveHLCloses(mids);
     // compute estimates when market closed
     if (mktState !== 'open') {
+      // bootstrap close references if missing (first visit on weekend)
+      if (!Object.keys(hlCloses).length) await bootstrapHLCloses(mids);
       lastEstimates = computeEstimates(mids);
     } else {
       lastEstimates = {};

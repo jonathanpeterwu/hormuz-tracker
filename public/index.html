@@ -32,6 +32,15 @@ tr:last-child td{border-bottom:none}
 .pnl-ret{font-size:10px;color:var(--text3);margin-left:4px}
 .hl-deltas{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
 .hl-d{font-size:10px;line-height:1}.hl-d-lbl{color:var(--text3);margin-right:1px}
+.news-list{display:flex;flex-direction:column;gap:0}
+.news-item{display:flex;align-items:baseline;gap:8px;padding:6px 0;border-bottom:.5px solid var(--border);font-size:12px;line-height:1.4}
+.news-item:last-child{border-bottom:none}
+.news-ago{font-size:10px;color:var(--text3);white-space:nowrap;min-width:42px;flex-shrink:0}
+.news-ago.fresh{color:var(--warning);font-weight:500}
+.news-title{color:var(--text2);flex:1}
+.news-title a{color:inherit;text-decoration:none}
+.news-title a:hover{color:var(--text);text-decoration:underline}
+.news-src{font-size:10px;color:var(--text3);white-space:nowrap}
 .review{background:var(--bg2);border:.5px solid var(--border);border-left:2px solid var(--bg-info);border-radius:var(--r);padding:14px 16px;margin-bottom:1.25rem;line-height:1.6}
 .review-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-weight:500}
 .review-text{font-size:13px;color:var(--text2)}
@@ -112,6 +121,10 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div class="review-text" id="review-text">Waiting for live data...</div>
 </div>
 
+<div class="sl">Headlines — Middle East &amp; oil <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="news-age"></span></div>
+<div class="news-list" id="news-list"><div style="font-size:12px;color:var(--text3)">Loading headlines...</div></div>
+
+<div class="div"></div>
 <div class="sl">Positions</div>
 <table>
   <thead><tr>
@@ -163,6 +176,7 @@ button:hover{background:var(--bg2);color:var(--text)}
     <div class="apill"><div class="sdot sdot-pending" id="dot-yf"></div><span id="lbl-yf">Yahoo Finance</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-hl"></div><span id="lbl-hl">Hyperliquid</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-pm"></div><span id="lbl-pm">Polymarket</span></div>
+    <div class="apill"><div class="sdot sdot-pending" id="dot-nw"></div><span id="lbl-nw">News</span></div>
   </div>
   <div class="ts" id="lts">Not yet refreshed</div>
 </div>
@@ -213,6 +227,7 @@ button:hover{background:var(--bg2);color:var(--text)}
 const YF_URL = '/api/yahoo';
 const HL_URL = '/api/hyperliquid';
 const PM_URL = '/api/polymarket';
+const NW_URL = '/api/news';
 
 // ---- POSITIONS JSON ---- default positions, overridden by localStorage if present
 const DEFAULT_POSITIONS=[
@@ -917,13 +932,51 @@ document.getElementById('pos-modal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
 
+// ---- News headlines ----
+async function fNews(){
+  setStatus('nw','pending','News...');
+  const cached = cacheGet('nw');
+  if (cached) {
+    renderNews(cached.data);
+    if (cached.fresh) {
+      setStatus('nw','ok','News  | cached ' + cacheAge('nw'));
+      return;
+    }
+    setStatus('nw','pending','News  | stale, refreshing...');
+  }
+  try {
+    const data = await fetch(NW_URL).then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
+    cacheSet('nw', data);
+    renderNews(data);
+    setStatus('nw','ok','News  | ' + data.length + ' headlines');
+  } catch(e) {
+    if (cached) { setStatus('nw','ok','News  | cached ' + cacheAge('nw')); return; }
+    setStatus('nw','err','News  | ' + e.message);
+  }
+}
+function renderNews(items) {
+  const el = document.getElementById('news-list');
+  if (!items || !items.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3)">No headlines found</div>'; return; }
+  // weight recency: items within last 6h get "fresh" styling
+  const sixHours = 6 * 3600000;
+  el.innerHTML = items.map(n => {
+    const isFresh = n.ts && (Date.now() - n.ts) < sixHours;
+    const agoClass = isFresh ? 'news-ago fresh' : 'news-ago';
+    const src = n.source ? `<span class="news-src">${n.source}</span>` : '';
+    return `<div class="news-item"><span class="${agoClass}">${n.ago || '—'}</span><span class="news-title"><a href="${n.url}" target="_blank" rel="noopener">${n.title}</a></span>${src}</div>`;
+  }).join('');
+  const age = document.getElementById('news-age');
+  if (age) age.textContent = '· ' + items.length + ' stories';
+}
+
 // ---- main refresh ----
 async function go(){
   document.getElementById('sl').textContent='Refreshing...';
   setStatus('yf','pending','Yahoo...');
   setStatus('hl','pending','Hyperliquid...');
   setStatus('pm','pending','Polymarket...');
-  await Promise.all([fYahoo(), fHL(), fPM()]);
+  setStatus('nw','pending','News...');
+  await Promise.all([fYahoo(), fHL(), fPM(), fNews()]);
   // persist liveData for fast next load
   try { localStorage.setItem('hc_liveData', JSON.stringify(liveData)); } catch(_) {}
   render(); // re-render with estimates + latest data
@@ -938,7 +991,7 @@ async function go(){
 
 // invalidate cache when positions change so next fetch is fresh
 function invalidateCache() {
-  ['hc_yf','hc_hl','hc_pm'].forEach(k => localStorage.removeItem(k));
+  ['hc_yf','hc_hl','hc_pm','hc_nw'].forEach(k => localStorage.removeItem(k));
 }
 
 renderExitSignals();render();go();setInterval(go,60000);

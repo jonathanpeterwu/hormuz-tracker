@@ -66,7 +66,8 @@ tr:last-child td{border-bottom:none}
 @keyframes sm{0%,100%{opacity:.3}50%{opacity:.9}}
 .div{height:.5px;background:var(--border);margin:1.25rem 0}
 .pml{display:flex;flex-direction:column;gap:6px}
-.pmr{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r)}
+.pmr{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);transition:background .15s}
+.pmr[onclick]:hover{background:var(--bg3)}
 .pmq{flex:1;font-size:13px;color:var(--text2);line-height:1.4}
 .est-cell{font-size:12px;line-height:1.3}.est-px{font-weight:500}.est-chg{font-size:11px}.est-via{font-size:9px;color:var(--text3)}
 .est-live{font-size:11px;color:var(--text3);font-style:italic}
@@ -480,8 +481,10 @@ function renderExitSignals() {
     const days = daysUntil(s.deadline);
     const daysLabel = days === 0 ? 'today' : days <= 7 ? days + 'd left' : Math.ceil(days / 7) + 'w left';
     const urgency = days <= 10 ? 'dn' : days <= 30 ? 'wn' : 'fl';
-    return `<div class="pmr">
-      <div class="pmq">${s.label}<span style="font-size:10px;color:var(--text3);margin-left:6px" class="${urgency}">${daysLabel}</span></div>
+    const pmUrl = s.slug ? 'https://polymarket.com/event/' + s.slug : null;
+    const clickAttr = pmUrl ? ` onclick="window.open('${pmUrl}','_blank')" style="cursor:pointer"` : '';
+    return `<div class="pmr"${clickAttr}>
+      <div class="pmq">${s.label}${pmUrl ? '<span style="font-size:9px;color:var(--text3);margin-left:4px">↗</span>' : ''}<span style="font-size:10px;color:var(--text3);margin-left:6px" class="${urgency}">${daysLabel}</span></div>
       <div class="pmbw"><div class="pmbf" id="b-${s.id}" style="width:${s.pct}%;background:${s.color}"></div></div>
       <div class="pmv ${s.pctClass}" id="p-${s.id}">${s.pct}%</div>
     </div>`;

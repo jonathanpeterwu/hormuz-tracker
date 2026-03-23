@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rules Settings — Hormuz War Room</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+:root{--bg:#fff;--bg2:#f8fafc;--bg3:#f1f5f9;--text:#0f172a;--text2:#475569;--text3:#94a3b8;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--info:#2563eb;--bg-success:#22c55e;--bg-warning:#f59e0b;--bg-danger:#dc2626;--bg-info:#3b82f6;--border:rgba(15,23,42,0.12);--border2:rgba(15,23,42,0.25);--r:8px;--rl:12px}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--bg2:#1e293b;--bg3:#334155;--text:#f1f5f9;--text2:#94a3b8;--text3:#475569;--success:#4ade80;--warning:#fbbf24;--danger:#f87171;--info:#60a5fa;--bg-success:#16a34a;--bg-warning:#d97706;--bg-danger:#dc2626;--bg-info:#2563eb;--border:rgba(241,245,249,0.12);--border2:rgba(241,245,249,0.25)}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);padding:1.5rem;max-width:960px;margin:0 auto;font-size:14px}
+.hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:1rem;border-bottom:.5px solid var(--border);margin-bottom:1.25rem}
+.ht{font-size:18px;font-weight:500}
+.back{font-size:13px;color:var(--info);text-decoration:none}
+.back:hover{text-decoration:underline}
+.sl{font-size:12px;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.75rem;margin-top:1.25rem}
+button{font-family:inherit;font-size:12px;padding:6px 14px;background:transparent;border:.5px solid var(--border2);border-radius:var(--r);color:var(--text2);cursor:pointer}
+button:hover{background:var(--bg2);color:var(--text)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--bg-info);color:#fff;border-color:var(--bg-info)}
+.btn-primary:hover{opacity:.9;background:var(--bg-info);color:#fff}
+.btn-success{background:var(--bg-success);color:#fff;border-color:var(--bg-success)}
+.btn-success:hover{opacity:.9}
+.btn-danger{background:var(--bg-danger);color:#fff;border-color:var(--bg-danger)}
+.btn-danger:hover{opacity:.9}
+
+/* Auth bar */
+.auth-bar{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:10px 14px;margin-bottom:1.25rem;display:flex;align-items:center;gap:10px}
+.auth-bar input{flex:1;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px}
+.auth-bar .status{font-size:12px;white-space:nowrap}
+
+/* Status badge */
+.source-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:99px;font-weight:500}
+.source-kv{background:#dcfce7;color:#166534}
+.source-file{background:#fef3c7;color:#854d0e}
+@media(prefers-color-scheme:dark){.source-kv{background:#14532d;color:#86efac}.source-file{background:#713f12;color:#fde68a}}
+
+/* Active rules panel */
+.panel{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:1rem}
+.panel-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.panel-title{font-size:14px;font-weight:500}
+.panel-meta{font-size:11px;color:var(--text3)}
+pre.rules{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word;line-height:1.6;max-height:300px;overflow:auto;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+
+/* Editor */
+textarea{width:100%;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:var(--r);padding:12px;resize:vertical;line-height:1.6;tab-size:2}
+.editor-actions{display:flex;gap:8px;margin-top:10px;align-items:center}
+.editor-actions .spacer{flex:1}
+
+/* AI generate */
+.gen-box{background:var(--bg2);border:.5px solid var(--border);border-left:2px solid var(--bg-info);border-radius:var(--r);padding:14px 16px;margin-bottom:1rem}
+.gen-input{display:flex;gap:8px;margin-top:10px}
+.gen-input input{flex:1;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:var(--r);padding:7px 10px}
+
+/* Diff view */
+.diff{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:11px;line-height:1.6;max-height:400px;overflow:auto;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:12px;white-space:pre-wrap;word-break:break-word}
+.diff-add{background:#dcfce7;color:#166534}
+.diff-del{background:#fee2e2;color:#991b1b}
+@media(prefers-color-scheme:dark){.diff-add{background:#14532d;color:#86efac}.diff-del{background:#450a0a;color:#fca5a5}}
+
+/* Compare columns */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.compare pre{max-height:350px;overflow:auto}
+@media(max-width:600px){.compare{grid-template-columns:1fr}}
+
+/* History */
+.hist-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:.5px solid var(--border);font-size:12px}
+.hist-item:last-child{border-bottom:none}
+.hist-ver{font-weight:500;min-width:40px}
+.hist-date{color:var(--text3);min-width:120px}
+.hist-sum{color:var(--text2);flex:1}
+.hist-actions{display:flex;gap:4px}
+
+/* Spinner */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--info);border-radius:50%;animation:sp .6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 16px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:200;opacity:0;transform:translateY(10px);transition:all .3s}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{border-left:3px solid var(--success)}
+.toast.err{border-left:3px solid var(--danger)}
+
+/* Tabs */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1rem}
+.tab{font-size:12px;padding:8px 16px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;border-left:none;border-right:none;border-top:none;border-radius:0}
+.tab.active{color:var(--text);border-bottom-color:var(--bg-info)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="ht">Rules Settings</div>
+  <a href="/" class="back">&larr; Back to War Room</a>
+</div>
+
+<!-- Auth -->
+<div class="auth-bar">
+  <label style="font-size:12px;color:var(--text3);white-space:nowrap">Secret token:</label>
+  <input type="password" id="token" placeholder="RULES_SECRET value" autocomplete="off">
+  <button onclick="authenticate()">Connect</button>
+  <div class="status" id="auth-status"></div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" data-tab="active" onclick="switchTab('active')">Active Rules</div>
+  <div class="tab" data-tab="generate" onclick="switchTab('generate')">AI Generate</div>
+  <div class="tab" data-tab="compare" onclick="switchTab('compare')">Compare</div>
+  <div class="tab" data-tab="history" onclick="switchTab('history')">History</div>
+</div>
+
+<!-- Tab: Active Rules -->
+<div id="tab-active">
+  <div class="panel">
+    <div class="panel-hdr">
+      <div>
+        <span class="panel-title">Current rules</span>
+        <span class="source-badge" id="source-badge">loading...</span>
+      </div>
+      <span class="panel-meta" id="rules-meta"></span>
+    </div>
+    <pre class="rules" id="active-rules">Loading...</pre>
+  </div>
+
+  <div class="sl">Edit &amp; Push</div>
+  <textarea id="editor" rows="18" placeholder="Paste or edit rules here..."></textarea>
+  <div style="display:flex;gap:8px;margin-top:6px">
+    <label style="font-size:11px;color:var(--text3)">Version:</label>
+    <input id="edit-version" style="width:80px;font-size:12px;padding:4px 8px;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:var(--r)" placeholder="v3.1">
+    <label style="font-size:11px;color:var(--text3);margin-left:8px">Summary:</label>
+    <input id="edit-summary" style="flex:1;font-size:12px;padding:4px 8px;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:var(--r)" placeholder="what changed">
+  </div>
+  <div class="editor-actions">
+    <button onclick="loadActiveToEditor()">Reset to active</button>
+    <div class="spacer"></div>
+    <button class="btn-primary" id="push-btn" onclick="pushRules()" disabled>Push to live</button>
+  </div>
+</div>
+
+<!-- Tab: AI Generate -->
+<div id="tab-generate" style="display:none">
+  <div class="gen-box">
+    <div class="panel-title">Generate new rules with Claude</div>
+    <p style="font-size:12px;color:var(--text2);margin-top:6px">
+      Describe what you want changed. Claude will generate a new version based on the current active rules.
+    </p>
+    <div class="gen-input">
+      <input id="gen-instructions" placeholder="e.g. tighten SPR window to 7 days, add natural gas positions">
+      <button class="btn-primary" id="gen-btn" onclick="generateRules()">Generate</button>
+    </div>
+  </div>
+
+  <div id="gen-result" style="display:none">
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-title">Generated: <span id="gen-version"></span></span>
+        <div style="display:flex;gap:6px">
+          <button onclick="loadGenToEditor()">Edit before pushing</button>
+          <button class="btn-success" onclick="promoteGenerated()">Promote to live</button>
+        </div>
+      </div>
+      <div id="gen-changelog" style="font-size:12px;color:var(--text2);margin-bottom:10px;padding:8px;background:var(--bg);border-radius:var(--r);border:1px solid var(--border)"></div>
+      <pre class="rules" id="gen-rules-text"></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Compare -->
+<div id="tab-compare" style="display:none">
+  <p style="font-size:12px;color:var(--text2);margin-bottom:10px">
+    Side-by-side comparison of active rules vs. editor or generated version.
+  </p>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button onclick="compareWithEditor()">Compare: Active vs Editor</button>
+    <button onclick="compareWithGenerated()" id="compare-gen-btn" disabled>Compare: Active vs Generated</button>
+  </div>
+  <div id="diff-view" class="diff" style="display:none"></div>
+  <div class="compare" id="side-by-side" style="display:none">
+    <div>
+      <div class="sl" style="margin-top:0">Active <span id="cmp-ver-a"></span></div>
+      <pre class="rules" id="cmp-left"></pre>
+    </div>
+    <div>
+      <div class="sl" style="margin-top:0">Candidate <span id="cmp-ver-b"></span></div>
+      <pre class="rules" id="cmp-right"></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: History -->
+<div id="tab-history" style="display:none">
+  <div id="history-list"><span style="font-size:12px;color:var(--text3)">Loading...</span></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// State
+let activeRules = '';
+let activeVersion = '';
+let activeSource = '';
+let generatedRules = '';
+let generatedVersion = '';
+let generatedChangelog = '';
+let token = '';
+
+// Init
+(function() {
+  token = localStorage.getItem('rules_token') || '';
+  document.getElementById('token').value = token;
+  if (token) authenticate();
+  else loadRules(); // load read-only even without token
+})();
+
+// ── Auth ──
+async function authenticate() {
+  token = document.getElementById('token').value.trim();
+  if (!token) return;
+  localStorage.setItem('rules_token', token);
+  const st = document.getElementById('auth-status');
+  st.innerHTML = '<span class="spin"></span>';
+
+  try {
+    const r = await fetch('/api/rules');
+    const d = await r.json();
+    setActiveRules(d);
+    st.innerHTML = '<span style="color:var(--success)">Connected</span>';
+    document.getElementById('push-btn').disabled = false;
+  } catch (e) {
+    st.innerHTML = '<span style="color:var(--danger)">Error</span>';
+  }
+}
+
+async function loadRules() {
+  try {
+    const r = await fetch('/api/rules');
+    const d = await r.json();
+    setActiveRules(d);
+  } catch (_) {}
+}
+
+function setActiveRules(d) {
+  activeRules = d.rules || '';
+  activeVersion = d.version || '?';
+  activeSource = d.source || '?';
+
+  document.getElementById('active-rules').textContent = activeRules;
+  document.getElementById('rules-meta').textContent = `${activeVersion}`;
+
+  const badge = document.getElementById('source-badge');
+  badge.textContent = activeSource === 'kv' ? 'KV (hot-swap)' : 'File (deploy)';
+  badge.className = 'source-badge ' + (activeSource === 'kv' ? 'source-kv' : 'source-file');
+
+  // Pre-fill editor
+  if (!document.getElementById('editor').value) {
+    loadActiveToEditor();
+  }
+}
+
+function loadActiveToEditor() {
+  document.getElementById('editor').value = activeRules;
+  document.getElementById('edit-version').value = nextVersion(activeVersion);
+  document.getElementById('edit-summary').value = '';
+}
+
+// ── Push rules ──
+async function pushRules() {
+  const rules = document.getElementById('editor').value.trim();
+  const version = document.getElementById('edit-version').value.trim();
+  const summary = document.getElementById('edit-summary').value.trim();
+  if (!rules) return toast('Rules text is empty', 'err');
+  if (!version) return toast('Version is required', 'err');
+  if (!token) return toast('Enter secret token first', 'err');
+
+  const btn = document.getElementById('push-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>Pushing...';
+
+  try {
+    const r = await fetch('/api/rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ rules, version, summary }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Push failed');
+
+    toast('Pushed ' + version + ' to live — active now, no deploy needed', 'ok');
+    await loadRules();
+    loadHistory();
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Push to live';
+  }
+}
+
+// ── AI Generate ──
+async function generateRules() {
+  const instructions = document.getElementById('gen-instructions').value.trim();
+  if (!instructions) return toast('Enter instructions first', 'err');
+  if (!token) return toast('Enter secret token first', 'err');
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>Generating...';
+
+  try {
+    const r = await fetch('/api/rules-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ instructions, currentRules: activeRules, currentVersion: activeVersion }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Generation failed');
+
+    generatedRules = d.rules;
+    generatedVersion = d.version;
+    generatedChangelog = d.changelog;
+
+    document.getElementById('gen-version').textContent = generatedVersion;
+    document.getElementById('gen-changelog').textContent = generatedChangelog;
+    document.getElementById('gen-rules-text').textContent = generatedRules;
+    document.getElementById('gen-result').style.display = 'block';
+    document.getElementById('compare-gen-btn').disabled = false;
+
+    toast('Generated ' + generatedVersion, 'ok');
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate';
+  }
+}
+
+function loadGenToEditor() {
+  document.getElementById('editor').value = generatedRules;
+  document.getElementById('edit-version').value = generatedVersion;
+  document.getElementById('edit-summary').value = generatedChangelog;
+  switchTab('active');
+  toast('Loaded generated rules into editor — review and push', 'ok');
+}
+
+async function promoteGenerated() {
+  if (!generatedRules) return;
+  if (!confirm('Promote ' + generatedVersion + ' to live? This takes effect immediately.')) return;
+
+  try {
+    const r = await fetch('/api/rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ rules: generatedRules, version: generatedVersion, summary: generatedChangelog }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Promote failed');
+
+    toast('Promoted ' + generatedVersion + ' to live!', 'ok');
+    await loadRules();
+    loadHistory();
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+// ── Compare ──
+function compareWithEditor() {
+  const editorText = document.getElementById('editor').value;
+  showDiff(activeRules, editorText, activeVersion, document.getElementById('edit-version').value || 'editor');
+}
+
+function compareWithGenerated() {
+  if (!generatedRules) return toast('Generate a version first', 'err');
+  showDiff(activeRules, generatedRules, activeVersion, generatedVersion);
+}
+
+function showDiff(textA, textB, verA, verB) {
+  const linesA = textA.split('\n');
+  const linesB = textB.split('\n');
+
+  // Simple line diff
+  const diffEl = document.getElementById('diff-view');
+  const html = [];
+  const maxLen = Math.max(linesA.length, linesB.length);
+
+  // LCS-based diff
+  const diff = computeDiff(linesA, linesB);
+  diff.forEach(d => {
+    const escaped = escHtml(d.text);
+    if (d.type === 'del') html.push(`<div class="diff-del">- ${escaped}</div>`);
+    else if (d.type === 'add') html.push(`<div class="diff-add">+ ${escaped}</div>`);
+    else html.push(`<div>  ${escaped}</div>`);
+  });
+
+  diffEl.innerHTML = html.join('');
+  diffEl.style.display = 'block';
+
+  // Side by side
+  document.getElementById('cmp-left').textContent = textA;
+  document.getElementById('cmp-right').textContent = textB;
+  document.getElementById('cmp-ver-a').textContent = '(' + verA + ')';
+  document.getElementById('cmp-ver-b').textContent = '(' + verB + ')';
+  document.getElementById('side-by-side').style.display = 'grid';
+}
+
+function computeDiff(a, b) {
+  // Simple O(nm) LCS diff — fine for rules-length text
+  const n = a.length, m = b.length;
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = 1; i <= n; i++)
+    for (let j = 1; j <= m; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1]);
+
+  const result = [];
+  let i = n, j = m;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && a[i-1] === b[j-1]) {
+      result.unshift({ type: 'same', text: a[i-1] });
+      i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+      result.unshift({ type: 'add', text: b[j-1] });
+      j--;
+    } else {
+      result.unshift({ type: 'del', text: a[i-1] });
+      i--;
+    }
+  }
+  return result;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── History ──
+async function loadHistory() {
+  const el = document.getElementById('history-list');
+  try {
+    const r = await fetch('/api/rules?history');
+    const d = await r.json();
+    const hist = d.history || [];
+    if (!hist.length) {
+      el.innerHTML = '<span style="font-size:12px;color:var(--text3)">No version history yet. Push a rules update to start tracking.</span>';
+      return;
+    }
+    el.innerHTML = hist.map(h => {
+      const item = typeof h === 'string' ? JSON.parse(h) : h;
+      return `<div class="hist-item">
+        <span class="hist-ver">${escHtml(item.version || '?')}</span>
+        <span class="hist-date">${item.updatedAt ? new Date(item.updatedAt).toLocaleString() : '—'}</span>
+        <span class="hist-sum">${escHtml(item.summary || '—')}</span>
+        <span style="font-size:10px;color:var(--text3)">${item.length ? item.length + ' chars' : ''}</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    el.innerHTML = '<span style="font-size:12px;color:var(--text3)">KV not configured — history requires Vercel KV.</span>';
+  }
+}
+
+// ── Tabs ──
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  ['active','generate','compare','history'].forEach(id => {
+    document.getElementById('tab-' + id).style.display = id === name ? '' : 'none';
+  });
+  if (name === 'history') loadHistory();
+}
+
+// ── Utils ──
+function nextVersion(v) {
+  if (!v) return 'v3.1';
+  const m = v.match(/^v(\d+)(?:\.(\d+))?$/);
+  if (!m) return v + '.1';
+  return 'v' + m[1] + '.' + (m[2] ? parseInt(m[2]) + 1 : 1);
+}
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + (type || '') + ' show';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>

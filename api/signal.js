@@ -2,56 +2,9 @@
 // Uses Claude API to generate buy/hold/sell probabilities per position
 // with critique → refine loop at decreasing temperature.
 
+import { rules as RULES, rulesVersion } from '../rules/current.js';
+
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
-
-const RULES_V3 = `
-HORMUZ TRACKER — TRADING RULES v3 (Mar 23 2026)
-
-THESIS: Iran/Hormuz disruption drives oil supply squeeze. Long oil (GUSH, USO, OILK),
-short tech (SQQQ), gold hedge (GLD), ag exposure (CF, NTR, CANE), tail puts (JETS, TSM, EWY).
-
-SIGNAL HIERARCHY:
-- Tier 1 (physical): Vessel count, daily transits, Fujairah damage — unmanipulable, highest weight
-- Tier 2 (market-implied): Polymarket probabilities, options flow, credit spreads
-- Tier 3 (verbal): Trump/official statements, social media — lowest weight, often noise
-- T1 overrides T3 when diverged.
-
-DELEVERAGING RULE v2 — requires ALL THREE simultaneously:
-1. Oil -10%+ intraday (not -5%, filters Trump announcement noise)
-2. Physical confirmation: vessel count dropping (from 2,500 toward 2,000) OR transits >20/day
-3. Polymarket Tier 1 shift: ops-end Jun 30 >80% held 24h AND Iran mil vs Israel <70%
-If only 1-2 of 3: HOLD — do NOT trim.
-
-SPR CLOCK OVERRIDE:
-If SPR cover <10 days remaining → NO oil trim regardless of price.
-Oil flush during SPR drawdown = market mispricing supply fix that isn't coming.
-Currently active through ~late April 2026.
-
-TRUMP ANNOUNCEMENT FILTER:
-If oil drops on Trump verbal + Iran denies within 24h + vessel count unchanged →
-automatic HOLD regardless of price magnitude.
-
-FORCED LIQUIDATION (market-wide cascade):
-Oil + BTC + SOX all -10%+ same session + VIX >40 →
-close 30% oil ONLY (not 50%), 25% cash, wait 72h.
-This is margin call cascade, not thesis death.
-
-CEASEFIRE INTERPRETATION:
-Dec 31 ceasefire is CUMULATIVE (war ends sometime in 2026), NOT imminent.
-Real trim trigger is ops-end Jun 30 at 80% held 24h, not ceasefire Dec 31.
-Ceasefire ≠ supply restoration: post-deal Fujairah needs weeks, mine clearance 4-8 weeks,
-2,500 vessels need weeks to clear, Goldman says elevated through 2027.
-
-POSITION-SPECIFIC RULES:
-- GUSH +40-50% from entry → aggressive trim zone
-- Oil positions: trim levels at BNO $65-68, $75-80; USO $138-142
-- SQQQ: hedge, hold while risk-off persists, size up if BTC <65K
-- GLD/ag: neutral hold, low conviction to trim
-- Options: let ride to expiry unless thesis invalidated
-
-OUTPUT: For each position, output {buy, hold, sell} probabilities summing to 100.
-buy = add to position, hold = maintain, sell = trim/exit.
-`;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -92,7 +45,7 @@ ${positions.map(p => {
     let signals = await callClaude(apiKey, [
       { role: 'user', content: `You are a quantitative trading signal generator for the Hormuz oil disruption thesis portfolio.
 
-${RULES_V3}
+${RULES}
 
 ${context}
 
@@ -119,7 +72,7 @@ Respond with ONLY a JSON array, no other text. Example:
       const critique = await callClaude(apiKey, [
         { role: 'user', content: `You are reviewing trading signals for correctness against the v3 rules.
 
-${RULES_V3}
+${RULES}
 
 ${context}
 
@@ -147,6 +100,7 @@ Respond with ONLY a JSON array, no other text.` }
       signals: parsed,
       passes: Math.min(passes, 3),
       model: 'claude-sonnet-4-20250514',
+      rulesVersion,
       generatedAt: new Date().toISOString(),
     };
 

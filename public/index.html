@@ -41,6 +41,22 @@ tr:last-child td{border-bottom:none}
 .news-title a{color:inherit;text-decoration:none}
 .news-title a:hover{color:var(--text);text-decoration:underline}
 .news-src{font-size:10px;color:var(--text3);white-space:nowrap}
+.pipe-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.pipe-card{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:11px 13px}
+.pipe-name{font-size:12px;font-weight:500;margin-bottom:2px}.pipe-dest{font-size:10px;color:var(--text3)}
+.pipe-cap{font-size:18px;font-weight:500;margin-top:4px}.pipe-status{font-size:10px;margin-top:2px}
+.pipe-summary{background:var(--bg2);border:.5px solid var(--border);border-left:2px solid var(--danger);border-radius:var(--r);padding:11px 14px;margin-bottom:10px}
+.pipe-summary-row{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.pipe-gap{font-size:18px;font-weight:500;color:var(--danger)}
+.pipe-bar-wrap{height:6px;background:var(--border);border-radius:3px;margin-top:6px;overflow:hidden}
+.pipe-bar-fill{height:100%;background:var(--bg-warning);border-radius:3px;transition:width .5s}
+.tl-list{display:flex;flex-direction:column;gap:0}
+.tl-item{display:flex;gap:10px;padding:7px 0;border-bottom:.5px solid var(--border);font-size:12px;line-height:1.45}
+.tl-item:last-child{border-bottom:none}
+.tl-day{font-size:11px;font-weight:600;color:var(--warning);white-space:nowrap;min-width:44px;flex-shrink:0}
+.tl-day.recent{color:var(--danger)}
+.tl-date{font-size:10px;color:var(--text3);white-space:nowrap;min-width:62px;flex-shrink:0}
+.tl-text{color:var(--text2);flex:1}
 .review{background:var(--bg2);border:.5px solid var(--border);border-left:2px solid var(--bg-info);border-radius:var(--r);padding:14px 16px;margin-bottom:1.25rem;line-height:1.6}
 .review-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-weight:500}
 .review-text{font-size:13px;color:var(--text2)}
@@ -150,13 +166,57 @@ button:hover{background:var(--bg2);color:var(--text)}
 </div>
 
 <div class="div"></div>
-<div class="sl">Vessel count — baseline Mar 20</div>
-<div class="vg">
-  <div class="vc"><div class="vn dn">2,500</div><div class="vd">Trapped inside Gulf</div></div>
-  <div class="vc"><div class="vn wn">400</div><div class="vd">Waiting outside strait</div></div>
-  <div class="vc"><div class="vn fl">~1</div><div class="vd">Transiting per day</div></div>
-  <div class="vc"><div class="vn fl">5%</div><div class="vd">Global tonnage idle</div></div>
+<div class="sl">Vessel count <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="vessel-src">— baseline Mar 20</span></div>
+<div class="vg" id="vessel-grid">
+  <div class="vc"><div class="vn dn" id="v-trapped">2,500</div><div class="vd">Trapped inside Gulf</div></div>
+  <div class="vc"><div class="vn wn" id="v-waiting">400</div><div class="vd">Waiting outside strait</div></div>
+  <div class="vc"><div class="vn fl" id="v-transit">~1</div><div class="vd">Transiting per day</div></div>
+  <div class="vc"><div class="vn fl" id="v-tonnage">5%</div><div class="vd">Global tonnage idle</div></div>
 </div>
+
+<div class="div"></div>
+<div class="sl">Bypass pipeline capacity</div>
+<div class="pipe-summary" id="pipe-summary">
+  <div class="pipe-summary-row">
+    <span>Normal strait flow: <strong>~20M bbl/day</strong></span>
+    <span>Total bypass: <strong id="pipe-total">~7M</strong> bbl/day</span>
+  </div>
+  <div class="pipe-bar-wrap"><div class="pipe-bar-fill" id="pipe-bar" style="width:35%"></div></div>
+  <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--text3)">
+    <span>Coverage: <span id="pipe-pct">35%</span></span>
+    <span class="dn">Gap: <strong id="pipe-gap">~13M</strong> bbl/day cannot be rerouted</span>
+  </div>
+</div>
+<div class="pipe-grid" id="pipe-grid">
+  <div class="pipe-card">
+    <div class="pipe-name">Saudi Petroline (East-West)</div>
+    <div class="pipe-dest">→ Yanbu, Red Sea</div>
+    <div class="pipe-cap">~5M <span style="font-size:11px;color:var(--text3)">bbl/day</span></div>
+    <div class="pipe-status up">Active — effective ~2.5-3.5M (partial NGL)</div>
+  </div>
+  <div class="pipe-card">
+    <div class="pipe-name">UAE ADCOP</div>
+    <div class="pipe-dest">→ Fujairah</div>
+    <div class="pipe-cap">~1.5M <span style="font-size:11px;color:var(--text3)">bbl/day</span></div>
+    <div class="pipe-status wn">Active — Fujairah port ops disrupted</div>
+  </div>
+  <div class="pipe-card">
+    <div class="pipe-name">Iraq-Turkey (Kirkuk-Ceyhan)</div>
+    <div class="pipe-dest">→ Ceyhan, Mediterranean</div>
+    <div class="pipe-cap">~0.5M <span style="font-size:11px;color:var(--text3)">bbl/day</span></div>
+    <div class="pipe-status wn">Intermittent operations</div>
+  </div>
+  <div class="pipe-card" style="border-left:2px solid var(--danger)">
+    <div class="pipe-name" style="color:var(--danger)">Unrouteable gap</div>
+    <div class="pipe-dest">No pipeline alternative</div>
+    <div class="pipe-cap dn">~13M <span style="font-size:11px;color:var(--text3)">bbl/day</span></div>
+    <div class="pipe-status" style="color:var(--text3)">65% of normal flow stranded</div>
+  </div>
+</div>
+
+<div class="div"></div>
+<div class="sl">Disruption timeline <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="tl-label">— from hormuztracker.com</span></div>
+<div class="tl-list" id="tl-list"><div style="font-size:12px;color:var(--text3)">Loading timeline...</div></div>
 
 <div class="div"></div>
 <div class="sl">Exit triggers</div>
@@ -177,6 +237,7 @@ button:hover{background:var(--bg2);color:var(--text)}
     <div class="apill"><div class="sdot sdot-pending" id="dot-hl"></div><span id="lbl-hl">Hyperliquid</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-pm"></div><span id="lbl-pm">Polymarket</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-nw"></div><span id="lbl-nw">News</span></div>
+    <div class="apill"><div class="sdot sdot-pending" id="dot-hz"></div><span id="lbl-hz">Hormuz</span></div>
   </div>
   <div class="ts" id="lts">Not yet refreshed</div>
 </div>
@@ -228,6 +289,7 @@ const YF_URL = '/api/yahoo';
 const HL_URL = '/api/hyperliquid';
 const PM_URL = '/api/polymarket';
 const NW_URL = '/api/news';
+const HZ_URL = '/api/hormuz';
 
 // ---- POSITIONS JSON ---- default positions, overridden by localStorage if present
 const DEFAULT_POSITIONS=[
@@ -932,6 +994,105 @@ document.getElementById('pos-modal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
 
+// ---- Hormuz tracker (vessels, pipelines, timeline) ----
+const FALLBACK_TIMELINE = [
+  {day:23,date:'Mar 21, 2026',headline:'Brent rebounds to $112. Qatar LNG damage assessment raises long-term supply concerns. TTF gas pulls back to ~€59. US gasoline $3.91/gal.'},
+  {day:22,date:'Mar 20, 2026',headline:'IEA emergency reserve release begins. Brent eases to ~$108. IMO votes humanitarian maritime corridor for crew evacuations. 6 permitted transits.'},
+  {day:21,date:'Mar 19, 2026',headline:'IEA announces coordinated 400M barrel emergency release. US 172M, Japan 80M, South Korea 22.5M bbl.'},
+  {day:21,date:'Mar 19, 2026',headline:'Kuwait refinery infrastructure disrupted. IMO reports 3,000+ ships and 40,000 seafarers stranded. Brent ~$110, WTI ~$96, US gas $3.85/gal.'},
+  {day:20,date:'Mar 18, 2026',headline:'Seven-nation joint statement calls for reopening the strait. Brent briefly touches $119.'},
+  {day:19,date:'Mar 17, 2026',headline:'Ship transits nearly double — 8 non-Iranian vessels detected via AIS. IMO opens emergency talks in London.'},
+  {day:18,date:'Mar 16, 2026',headline:'Further disruption to UAE energy infrastructure. Additional tanker incidents near strait. Oman ports also affected.'},
+  {day:17,date:'Mar 15, 2026',headline:'Diplomatic efforts to reopen strait stall. Dubai airport briefly disrupted. Dozens of vessels waiting on each side.'},
+  {day:15,date:'Mar 13, 2026',headline:'UAE energy infrastructure disrupted. Fujairah Oil Industry Zone affected. Bypass routes at risk.'},
+  {day:14,date:'Mar 12, 2026',headline:'Turkey, India, Pakistan negotiate individual passage rights. Small number of vessels transit under special arrangements.'},
+  {day:13,date:'Mar 11, 2026',headline:'Multiple commercial vessels damaged near strait. Brent peaks at $126/bbl. Even permitted transits proving hazardous.'},
+  {day:12,date:'Mar 10, 2026',headline:'G7 agrees to explore escorting ships through the strait. IEA announces 400M barrel emergency reserve release.'},
+  {day:11,date:'Mar 9, 2026',headline:'Saudi Aramco activates East-West Pipeline to Yanbu. UAE activates ADCOP to Fujairah. Bypass ~3.5-5.5M bbl/day vs 20M strait.'},
+  {day:9,date:'Mar 7, 2026',headline:'Brent crude surpasses $100/bbl first time in 4 years. UKMTO reports multiple incidents involving commercial ships.'},
+  {day:6,date:'Mar 4, 2026',headline:'P&I insurance formally removed for Hormuz transit. Strait declared high-risk zone. Transit commercially unviable.'},
+];
+async function fHormuz(){
+  setStatus('hz','pending','Hormuz...');
+  const cached = cacheGet('hz');
+  if (cached) {
+    applyHormuzData(cached.data);
+    if (cached.fresh) {
+      setStatus('hz','ok','Hormuz  | cached ' + cacheAge('hz'));
+      return;
+    }
+    setStatus('hz','pending','Hormuz  | stale, refreshing...');
+  }
+  try {
+    const data = await fetch(HZ_URL).then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
+    cacheSet('hz', data);
+    applyHormuzData(data);
+    const tlCount = data.timeline ? data.timeline.length : 0;
+    setStatus('hz','ok','Hormuz  | ' + tlCount + ' events');
+  } catch(e) {
+    if (cached) { setStatus('hz','ok','Hormuz  | cached ' + cacheAge('hz')); return; }
+    // fallback to hardcoded timeline
+    renderTimeline(FALLBACK_TIMELINE);
+    setStatus('hz','err','Hormuz  | offline, using fallback');
+  }
+}
+function applyHormuzData(data) {
+  // Update vessel counts if available
+  if (data.vessels) {
+    const v = data.vessels;
+    if (v.trapped) {
+      const el = document.getElementById('v-trapped');
+      if (el) el.textContent = v.trapped.toLocaleString();
+    }
+    if (v.waiting) {
+      const el = document.getElementById('v-waiting');
+      if (el) el.textContent = v.waiting.toLocaleString();
+    }
+    if (v.transitsPerDay !== undefined) {
+      const el = document.getElementById('v-transit');
+      if (el) el.textContent = v.transitsPerDay;
+    }
+    if (v.globalTonnageIdle) {
+      const el = document.getElementById('v-tonnage');
+      if (el) el.textContent = v.globalTonnageIdle + '%';
+    }
+    document.getElementById('vessel-src').textContent = '— live from hormuztracker.com';
+  }
+
+  // Update pipeline data if scraped
+  if (data.pipelines && data.pipelines.length) {
+    let totalBypass = 0;
+    data.pipelines.forEach(p => {
+      const cap = parseFloat(p.capacity);
+      if (!isNaN(cap)) totalBypass += cap;
+    });
+    if (totalBypass > 0) {
+      const normalFlow = 20;
+      const gap = normalFlow - totalBypass;
+      const pct = Math.round((totalBypass / normalFlow) * 100);
+      document.getElementById('pipe-total').textContent = '~' + totalBypass + 'M';
+      document.getElementById('pipe-gap').textContent = '~' + gap + 'M';
+      document.getElementById('pipe-pct').textContent = pct + '%';
+      document.getElementById('pipe-bar').style.width = pct + '%';
+    }
+  }
+
+  // Render timeline
+  if (data.timeline && data.timeline.length) {
+    renderTimeline(data.timeline);
+  }
+}
+function renderTimeline(events) {
+  const el = document.getElementById('tl-list');
+  if (!events.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3)">No timeline data</div>'; return; }
+  const maxDay = Math.max(...events.map(e => e.day));
+  el.innerHTML = events.map(e => {
+    const isRecent = e.day >= maxDay - 2;
+    return `<div class="tl-item"><span class="tl-day${isRecent ? ' recent' : ''}">Day ${e.day}</span><span class="tl-date">${e.date}</span><span class="tl-text">${e.headline}</span></div>`;
+  }).join('');
+  document.getElementById('tl-label').textContent = '— Day ' + maxDay + ' · hormuztracker.com';
+}
+
 // ---- News headlines ----
 async function fNews(){
   setStatus('nw','pending','News...');
@@ -976,7 +1137,8 @@ async function go(){
   setStatus('hl','pending','Hyperliquid...');
   setStatus('pm','pending','Polymarket...');
   setStatus('nw','pending','News...');
-  await Promise.all([fYahoo(), fHL(), fPM(), fNews()]);
+  setStatus('hz','pending','Hormuz...');
+  await Promise.all([fYahoo(), fHL(), fPM(), fNews(), fHormuz()]);
   // persist liveData for fast next load
   try { localStorage.setItem('hc_liveData', JSON.stringify(liveData)); } catch(_) {}
   render(); // re-render with estimates + latest data
@@ -991,10 +1153,10 @@ async function go(){
 
 // invalidate cache when positions change so next fetch is fresh
 function invalidateCache() {
-  ['hc_yf','hc_hl','hc_pm','hc_nw'].forEach(k => localStorage.removeItem(k));
+  ['hc_yf','hc_hl','hc_pm','hc_nw','hc_hz'].forEach(k => localStorage.removeItem(k));
 }
 
-renderExitSignals();render();go();setInterval(go,60000);
+renderExitSignals();renderTimeline(FALLBACK_TIMELINE);render();go();setInterval(go,60000);
 </script>
 </body>
 </html>

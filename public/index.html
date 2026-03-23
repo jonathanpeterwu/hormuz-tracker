@@ -222,9 +222,11 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="div"></div>
 <div class="sl">Exit triggers</div>
 <div class="tb">
-  <div class="tr2"><div class="ttn">1</div><div class="ttt">Vessels inside Gulf: 2,500 → 2,000 watch · → 1,500 trim ⅓ oil · → 1,000 major exit. Check hormuztracker.com daily.</div></div>
-  <div class="tr2"><div class="ttn">2</div><div class="ttt">Polymarket near-term ceasefire above 70% · Trump/China market was 44% — either hitting 70% = start trimming.</div></div>
-  <div class="tr2"><div class="ttn">3</div><div class="ttt">BNO $65–68 trim ⅓ · $75–80 trim ⅓ · USO $138–142 trim ⅓ · GUSH +40–50% from entry trim aggressively.</div></div>
+  <div class="tr2"><div class="ttn">1</div><div class="ttt">Trump ops-end Jun 30 crosses 80% (now ~75%) → trim 30-50% oil. This is the primary near-term signal.</div></div>
+  <div class="tr2"><div class="ttn">2</div><div class="ttt">Vessels inside Gulf: 2,500 → 2,000 watch · → 1,500 trim ⅓ oil · → 1,000 major exit. Daily transits >20 = supply restoration.</div></div>
+  <div class="tr2"><div class="ttn">3</div><div class="ttt">Forced deleveraging: oil -5% + BTC -8% + SOX -5% same session → cut 30% risk immediately.</div></div>
+  <div class="tr2"><div class="ttn">4</div><div class="ttt">BNO $65–68 trim ⅓ · $75–80 trim ⅓ · USO $138–142 trim ⅓ · GUSH +40–50% from entry trim aggressively.</div></div>
+  <div class="tr2"><div class="ttn">—</div><div class="ttt">Dec 31 ceasefire is cumulative (war ends sometime in 2026), NOT an imminent signal. Post-deal: Fujairah weeks to restore, mine clearance 4-8 wks, Goldman elevated through 2027.</div></div>
 </div>
 
 <div class="ft">
@@ -447,8 +449,9 @@ function computeEstimates(mids) {
 
 // ---- exit signals (Polymarket) ----
 const EXIT_SIGNALS = [
-  { id:'ceasefire', label:'Ceasefire by Dec 31', deadline:'2026-12-31', slug:'us-x-iran-ceasefire-by-december-31', color:'var(--bg-success)', pctClass:'up', pct:69, impact:'high', action:'Trim oil longs 30-50%' },
+  { id:'ceasefire', label:'Ceasefire by Dec 31', deadline:'2026-12-31', slug:'us-x-iran-ceasefire-by-december-31', color:'var(--bg-success)', pctClass:'up', pct:69, impact:'medium', action:'Cumulative — not a near-term trim trigger' },
   { id:'military', label:'Military action through Mar 31', deadline:'2026-03-31', slug:null, color:'var(--bg-danger)', pctClass:'dn', pct:90, impact:'high', action:'Confirms thesis — hold' },
+  { id:'opsend', label:'Trump ops-end Jun 30', deadline:'2026-06-30', slug:'trump-ends-iran-military-operations-by-june-30', color:'var(--bg-danger)', pctClass:'dn', pct:75, impact:'high', action:'If >80% trim 30-50% oil' },
   { id:'hormuz', label:'Hormuz normal by end of April', deadline:'2026-04-30', slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30', color:'var(--bg-warning)', pctClass:'wn', pct:27, impact:'high', action:'If >60% trim oil' },
   { id:'crude100', label:'Crude hits $100 by end of March', deadline:'2026-03-31', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:89, impact:'medium', action:'Take profit on USO/OILK' },
   { id:'ships', label:'20+ ships transit Hormuz in March', deadline:'2026-03-31', slug:null, color:'var(--bg-info)', pctClass:'inf', pct:35, impact:'medium', action:'Watch vessel counts' },
@@ -523,22 +526,29 @@ function computeSignal(p) {
     else { sell += 15; buy -= 5; hold -= 10; } // deep loss, cut
   }
 
-  // --- Oil-specific: Polymarket ceasefire / Hormuz signals ---
-  // Scaled down: ceasefire is one input among several, not a sledgehammer
+  // --- Oil-specific: ops-end / Hormuz / ceasefire signals ---
+  // Ops-end Jun 30 is the PRIMARY near-term trim trigger, not Dec 31 ceasefire
+  // Ceasefire Dec 31 is cumulative — small weight only
   const isOil = ['bo'].includes(p.bg);
   const isShort = ['bs','bp'].includes(p.bg);
-  if (cf !== null) {
-    if (isOil) {
-      if (cf >= 70) { sell += 16; buy -= 9; hold -= 7; }
-      else if (cf >= 50) { sell += 6; hold += 4; buy -= 10; }
-      else if (cf < 30) { buy += 10; sell -= 6; hold -= 4; }
-      else { hold += 4; buy -= 2; sell -= 2; }
-    }
-    if (isShort) {
-      if (cf < 30) { hold += 6; buy += 4; sell -= 10; }
-      else if (cf >= 70) { sell += 8; buy -= 5; hold -= 3; }
-    }
+  const oe = liveData.opsEnd;
+  // Ops-end Jun 30: strongest near-term signal
+  if (oe !== null && isOil) {
+    if (oe >= 80) { sell += 20; buy -= 12; hold -= 8; }
+    else if (oe >= 70) { sell += 10; hold += 2; buy -= 12; }
+    else if (oe < 50) { buy += 8; sell -= 4; hold -= 4; }
+    else { hold += 4; buy -= 2; sell -= 2; }
   }
+  if (oe !== null && isShort) {
+    if (oe >= 80) { sell += 10; buy -= 6; hold -= 4; }
+    else if (oe < 50) { hold += 4; buy += 2; sell -= 6; }
+  }
+  // Ceasefire Dec 31: reduced weight — cumulative, not imminent
+  if (cf !== null && isOil) {
+    if (cf >= 70) { sell += 4; buy -= 2; hold -= 2; }
+    else if (cf < 30) { buy += 4; sell -= 2; hold -= 2; }
+  }
+  // Hormuz normalization: direct supply signal
   if (hz !== null && isOil) {
     if (hz <= 20) { buy += 6; sell -= 3; hold -= 3; }
     else if (hz >= 60) { sell += 8; buy -= 5; hold -= 3; }
@@ -867,7 +877,8 @@ function connectFinnhubWebSocket() {
 // ---- Polymarket ----
 const PM_MARKETS=[
   {slug:'us-x-iran-ceasefire-by-december-31',     v:'pd',b:'bd'},
-  {slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30',v:'ph',b:'bh'}
+  {slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30',v:'ph',b:'bh'},
+  {slug:'trump-ends-iran-military-operations-by-june-30',v:null,b:null}
 ];
 function applyPMData(pmData) {
   PM_MARKETS.forEach(m => {
@@ -875,6 +886,7 @@ function applyPMData(pmData) {
     if (pct === undefined) return;
     if(m.slug.includes('ceasefire')) liveData.ceasefire=pct;
     if(m.slug.includes('hormuz')) liveData.hormuz=pct;
+    if(m.slug.includes('military-operations')) liveData.opsEnd=pct;
     // update EXIT_SIGNALS with live data
     const sig = EXIT_SIGNALS.find(s => s.slug === m.slug);
     if (sig) sig.pct = pct;
@@ -928,7 +940,7 @@ async function fPM(){
 }
 
 // ---- live data store for review ----
-let liveData = { ceasefire: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null };
+let liveData = { ceasefire: null, opsEnd: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null };
 // restore liveData from cache on load
 try {
   const ld = localStorage.getItem('hc_liveData');
@@ -978,21 +990,27 @@ function updateReview() {
   s1 += '.';
   parts.push(s1);
 
-  // sentence 2: EV-weighted Polymarket read with concrete action
-  if (cf !== null || hz !== null) {
+  // sentence 2: Near-term trim triggers (NOT Dec 31 ceasefire cumulative)
+  // Ceasefire Dec 31 is multi-outcome cumulative ("war ends at some point in 2026") — NOT imminent.
+  // Real trim signals: ops-end Jun 30 >80%, vessel count <1500, transits >20/day, forced delev.
+  const oe = liveData.opsEnd;
+  if (oe !== null || hz !== null || cf !== null) {
     let s2 = '';
-    if (cf !== null && cf >= 70) {
-      const evLoss = cf; // cf% chance thesis dies
-      s2 = 'Ceasefire at <strong class="up">' + cf + '%</strong> means ' + evLoss + '% implied probability your oil longs go to zero edge — that\'s <strong>-EV to hold full size, trim 30-50% of GUSH/USO/OILK now</strong> and redeploy into gold or cash.';
-    } else if (cf !== null && cf >= 50) {
-      s2 = 'Ceasefire at <strong class="wn">' + cf + '%</strong> is a coin flip — oil longs are <strong>barely +EV at current sizing</strong>. Set hard stops at breakeven on USO/OILK and prepare to cut ⅓ if this crosses 60%.';
-    } else if (cf !== null && cf < 50 && hz !== null && hz <= 30) {
-      const edge = 100 - cf;
-      s2 = 'Ceasefire only ' + cf + '% with Hormuz normalization at ' + hz + '% — <strong>' + edge + '% implied odds the disruption holds, thesis is +EV</strong>. Oil longs have room to run; consider adding 10-15% to GUSH on any pullback.';
-    } else if (cf !== null && cf < 50) {
-      s2 = 'Ceasefire at ' + cf + '% means <strong>' + (100-cf) + '% the conflict persists — strongly +EV to hold</strong>. No trim triggers hit, keep full oil exposure and let winners ride.';
-    } else if (hz !== null) {
-      s2 = 'Hormuz normalization at ' + hz + '% — ' + (hz<=30 ? '<strong>disruption persists, +EV to hold oil thesis at full size</strong>.' : hz>=60 ? '<strong>shipping recovery accelerating, trim 25% of oil longs before edge erodes</strong>.' : 'neutral zone, <strong>hold positions but tighten stops to protect gains</strong>.');
+    // Primary near-term trigger: ops-end Jun 30
+    if (oe !== null && oe >= 80) {
+      s2 = 'Trump ops-end Jun 30 at <strong class="up">' + oe + '%</strong> — this is the real trim trigger, not Dec 31 ceasefire. <strong>Cut 30-50% of GUSH/USO/OILK now</strong>. Even post-deal: Fujairah needs weeks to restore, mine clearance 4-8 weeks, 2,500 vessels to clear — but edge is thinning fast.';
+    } else if (oe !== null && oe >= 70) {
+      s2 = 'Ops-end Jun 30 at <strong class="wn">' + oe + '%</strong> is approaching the 80% trim threshold — <strong>prepare to cut ⅓ of oil longs if this crosses 80%</strong>. Tighten stops now.';
+    } else if (hz !== null && hz >= 60) {
+      s2 = 'Hormuz normalization at <strong class="wn">' + hz + '%</strong> — <strong>shipping recovery accelerating, trim 25% of oil longs</strong>. Watch daily transit counts; above 20/day confirms supply restoration.';
+    } else if (hz !== null && hz <= 30 && (oe === null || oe < 70)) {
+      s2 = 'Hormuz normalization only ' + hz + '% with ops-end ' + (oe !== null ? oe + '%' : 'n/a') + ' — <strong>disruption holds, thesis is +EV at current size</strong>. None of the 4 trim triggers hit (ops-end >80%, vessels <1,500, transits >20/day, forced delev).';
+    } else if (cf !== null && cf >= 70) {
+      s2 = 'Dec 31 ceasefire at ' + cf + '% is <strong>cumulative</strong> (war ends sometime in 2026), not an imminent signal. Near-term ceasefire probability is much lower. <strong>Focus on ops-end Jun 30 (' + (oe !== null ? oe + '%' : 'n/a') + ') as the real trim trigger</strong>.';
+    } else if (cf !== null) {
+      s2 = 'Dec 31 ceasefire at ' + cf + '% (cumulative). Ops-end Jun 30 at ' + (oe !== null ? '<strong>' + oe + '%</strong>' : 'n/a') + ' — <strong>' + (oe !== null && oe < 70 ? 'no trim triggers hit, hold full size' : 'watch for ops-end crossing 80%') + '</strong>. Ceasefire ≠ supply restoration: post-deal prices stay elevated (Goldman: through 2027).';
+    } else {
+      s2 = 'Ops-end Jun 30 at ' + (oe !== null ? oe + '%' : 'n/a') + ', Hormuz at ' + (hz !== null ? hz + '%' : 'n/a') + ' — <strong>hold current sizing, no trim triggers breached</strong>.';
     }
     parts.push(s2);
   }
@@ -1009,7 +1027,9 @@ function updateReview() {
   } else if (btcVal && btcVal > 85000) {
     s3 = 'BTC at <strong class="up">' + f(btcVal, 0) + '</strong> is risk-on which conflicts with the war thesis — <strong>watch for divergence, if oil falls while BTC rallies consider cutting 20% of oil longs</strong>.';
   } else {
-    let conviction = cf !== null && cf < 40 ? 'high' : cf !== null && cf < 60 ? 'moderate' : 'weakening';
+    // conviction based on ops-end (primary) with ceasefire as secondary
+    const oeVal = oe !== null ? oe : (cf !== null ? cf * 0.5 : 50); // ops-end drives conviction; ceasefire half-weighted
+    let conviction = oeVal < 50 ? 'high' : oeVal < 70 ? 'moderate' : 'weakening';
     s3 = 'Cross-asset signals show <strong>' + conviction + ' conviction</strong> in the disruption thesis — ' + (conviction === 'high' ? '<strong>hold full size, this is +EV across the board</strong>.' : conviction === 'moderate' ? '<strong>hold but set trailing stops at +10% from current levels</strong>.' : '<strong>start scaling out 15-20% of oil exposure, edge is thinning</strong>.');
   }
   parts.push(s3);

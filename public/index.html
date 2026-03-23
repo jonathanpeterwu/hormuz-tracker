@@ -58,6 +58,7 @@ tr:last-child td{border-bottom:none}
 .tl-date{font-size:10px;color:var(--text3);white-space:nowrap;min-width:62px;flex-shrink:0}
 .tl-text{color:var(--text2);flex:1}
 .ws-live{font-size:9px;color:var(--success);font-weight:600;letter-spacing:.04em}
+.ai-tag{font-size:8px;background:var(--accent);color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px;font-weight:600;letter-spacing:.03em;vertical-align:middle}
 .review{background:var(--bg2);border:.5px solid var(--border);border-left:2px solid var(--bg-info);border-radius:var(--r);padding:14px 16px;margin-bottom:1.25rem;line-height:1.6}
 .review-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-weight:500}
 .review-text{font-size:13px;color:var(--text2)}
@@ -245,6 +246,7 @@ button:hover{background:var(--bg2);color:var(--text)}
     <div class="apill"><div class="sdot sdot-pending" id="dot-pm"></div><span id="lbl-pm">Polymarket</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-nw"></div><span id="lbl-nw">News</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-hz"></div><span id="lbl-hz">Hormuz</span></div>
+    <div class="apill"><div class="sdot sdot-pending" id="dot-ai"></div><span id="lbl-ai">AI Signal</span></div>
   </div>
   <div class="ts" id="lts">Not yet refreshed</div>
 </div>
@@ -579,17 +581,26 @@ function computeSignal(p) {
   return { buy, hold, sell };
 }
 
-function renderSignalBar(sig) {
+// LLM-generated signals (from /api/signal self-annealing loop)
+let aiSignals = {}; // ticker → {buy, hold, sell, reasoning}
+let aiSignalAge = 0;
+
+function renderSignalBar(sig, aiSig) {
   const parts = [];
-  if (sig.buy > 0) parts.push(`<span class="sig-buy" style="width:${sig.buy}%"></span>`);
-  if (sig.hold > 0) parts.push(`<span class="sig-hold" style="width:${sig.hold}%"></span>`);
-  if (sig.sell > 0) parts.push(`<span class="sig-sell" style="width:${sig.sell}%"></span>`);
-  const T = 7; // buffer: must lead hold by ≥T points to show BUY/SELL
-  const dominant = sig.buy > sig.sell && sig.buy > sig.hold && (sig.buy - sig.hold) >= T ? 'BUY'
-                 : sig.sell > sig.buy && sig.sell > sig.hold && (sig.sell - sig.hold) >= T ? 'SELL'
+  // Use AI signal if available, otherwise hardcoded
+  const s = aiSig || sig;
+  const isAi = !!aiSig;
+  if (s.buy > 0) parts.push(`<span class="sig-buy" style="width:${s.buy}%"></span>`);
+  if (s.hold > 0) parts.push(`<span class="sig-hold" style="width:${s.hold}%"></span>`);
+  if (s.sell > 0) parts.push(`<span class="sig-sell" style="width:${s.sell}%"></span>`);
+  const T = 7;
+  const dominant = s.buy > s.sell && s.buy > s.hold && (s.buy - s.hold) >= T ? 'BUY'
+                 : s.sell > s.buy && s.sell > s.hold && (s.sell - s.hold) >= T ? 'SELL'
                  : 'HOLD';
   const actClass = dominant === 'BUY' ? 'sig-act-buy' : dominant === 'SELL' ? 'sig-act-sell' : 'sig-act-hold';
-  return `<div class="sig-wrap"><div class="sig-bar">${parts.join('')}</div><span class="sig-act ${actClass}">${dominant}</span></div>`;
+  const aiTag = isAi ? '<span class="ai-tag">AI</span>' : '';
+  const tooltip = isAi && aiSig.reasoning ? ` title="${aiSig.reasoning.replace(/"/g, '&quot;')}"` : '';
+  return `<div class="sig-wrap"${tooltip}><div class="sig-bar">${parts.join('')}</div><span class="sig-act ${actClass}">${dominant}</span>${aiTag}</div>`;
 }
 
 // ---- render positions table ----
@@ -606,6 +617,7 @@ function render(){
     const pnl=fp(p.pnl);
     const lp=p.lastPrice ? f(p.lastPrice) : (p.type==='option' ? '<span style="color:var(--text3)">'+f(p.avg)+'</span>' : '<span class="sh">—</span>');
     const sig=computeSignal(p);
+    const aiSig=aiSignals[p.ticker] || null;
 
     // return % from entry
     const retPct = p.lastPrice ? ((p.lastPrice - p.avg) / p.avg * 100) : null;
@@ -625,7 +637,7 @@ function render(){
     }
 
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><span class="tk">${p.ticker}</span><span class="bg ${p.bg}">${p.label}</span></td><td>${p.qty}</td><td>${f(p.avg)}</td><td>${lp}</td><td>${estHtml}</td><td class="r"><span class="${pnl.c}">${pnl.t}</span> ${retStr}</td><td>${renderSignalBar(sig)}</td>`;
+    tr.innerHTML=`<td><span class="tk">${p.ticker}</span><span class="bg ${p.bg}">${p.label}</span></td><td>${p.qty}</td><td>${f(p.avg)}</td><td>${lp}</td><td>${estHtml}</td><td class="r"><span class="${pnl.c}">${pnl.t}</span> ${retStr}</td><td>${renderSignalBar(sig, aiSig)}</td>`;
     tb.appendChild(tr);
   });
   const uel=document.getElementById('m2');
@@ -1272,6 +1284,50 @@ function renderNews(items) {
   if (age) age.textContent = '· ' + items.length + ' stories';
 }
 
+// ---- AI signal generator (self-annealing LLM loop) ----
+const AI_SIGNAL_URL = '/api/signal';
+const AI_SIGNAL_INTERVAL = 300000; // refresh every 5 min (Claude API cost-aware)
+async function fAISignal() {
+  // skip if recently fetched
+  if (aiSignalAge && (Date.now() - aiSignalAge) < AI_SIGNAL_INTERVAL) {
+    const ago = Math.round((Date.now() - aiSignalAge) / 1000);
+    setStatus('ai','ok','AI Signal  | cached ' + ago + 's ago');
+    return;
+  }
+  setStatus('ai','pending','AI Signal  | generating...');
+  try {
+    const resp = await fetch(AI_SIGNAL_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        positions: pos.map(p => ({
+          ticker: p.ticker, label: p.label, type: p.type, bg: p.bg,
+          qty: p.qty, avg: p.avg, pnl: p.pnl, lastPrice: p.lastPrice || null
+        })),
+        liveData: {
+          btc: liveData.btc, wti: liveData.wti, gold: liveData.gold,
+          ceasefire: liveData.ceasefire, opsEnd: liveData.opsEnd, hormuz: liveData.hormuz,
+          sprOverride: true // flip when SPR exhausted ~late April
+        },
+        passes: 2
+      })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data.signals && data.signals.length) {
+      aiSignals = {};
+      data.signals.forEach(s => { aiSignals[s.ticker] = s; });
+      aiSignalAge = Date.now();
+      render();
+      setStatus('ai','ok','AI Signal  | ' + data.signals.length + ' positions · ' + data.passes + ' passes');
+    } else {
+      throw new Error('empty response');
+    }
+  } catch(e) {
+    setStatus('ai','err','AI Signal  | ' + e.message);
+  }
+}
+
 // ---- main refresh ----
 async function go(){
   document.getElementById('sl').textContent='Refreshing...';
@@ -1305,13 +1361,18 @@ async function go(){
   try { localStorage.setItem('hc_liveData', JSON.stringify(liveData)); } catch(_) {}
   render(); // re-render with estimates + latest data
   updateReview();
+
+  // AI signal: fire after data is populated (non-blocking — don't await)
+  fAISignal();
+
   const mkt = getMarketState();
   const wsLabel = hlWsLive ? ' · WS live' : '';
+  const aiLabel = Object.keys(aiSignals).length ? ' · AI' : '';
   const mktLabel = mkt === 'open' ? '' : mkt === 'weekend' ? ' · wknd est.' : ' · o/n est.';
   const t=new Date().toLocaleTimeString();
   document.getElementById('ts').textContent=t;
   document.getElementById('lts').textContent='Updated '+t;
-  document.getElementById('sl').textContent='Positions  | auto-refresh 60s' + mktLabel + wsLabel;
+  document.getElementById('sl').textContent='Positions  | auto-refresh 60s' + mktLabel + wsLabel + aiLabel;
 }
 
 // invalidate cache when positions change so next fetch is fresh

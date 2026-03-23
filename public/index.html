@@ -57,6 +57,7 @@ tr:last-child td{border-bottom:none}
 .tl-day.recent{color:var(--danger)}
 .tl-date{font-size:10px;color:var(--text3);white-space:nowrap;min-width:62px;flex-shrink:0}
 .tl-text{color:var(--text2);flex:1}
+.ws-live{font-size:9px;color:var(--success);font-weight:600;letter-spacing:.04em}
 .review{background:var(--bg2);border:.5px solid var(--border);border-left:2px solid var(--bg-info);border-radius:var(--r);padding:14px 16px;margin-bottom:1.25rem;line-height:1.6}
 .review-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-weight:500}
 .review-text{font-size:13px;color:var(--text2)}
@@ -231,6 +232,7 @@ button:hover{background:var(--bg2);color:var(--text)}
     <button onclick="go()">Refresh all</button>
     <button onclick="openModal()">Edit positions</button>
     <button onclick="window.open('/api/positions','_blank')">API ↗</button>
+    <button onclick="promptFinnhubKey()">Finnhub key</button>
   </div>
   <div class="api-pills">
     <div class="apill"><div class="sdot sdot-pending" id="dot-yf"></div><span id="lbl-yf">Yahoo Finance</span></div>
@@ -290,6 +292,10 @@ const HL_URL = '/api/hyperliquid';
 const PM_URL = '/api/polymarket';
 const NW_URL = '/api/news';
 const HZ_URL = '/api/hormuz';
+const HL_WS_URL = 'wss://api.hyperliquid.xyz/ws';
+const FH_WS_BASE = 'wss://ws.finnhub.io?token=';
+// Finnhub free API key — get yours at https://finnhub.io/register
+let FINNHUB_KEY = localStorage.getItem('finnhub_key') || 'd70nlihr01ql6rnvvff0d70nlihr01ql6rnvvffg';
 
 // ---- POSITIONS JSON ---- default positions, overridden by localStorage if present
 const DEFAULT_POSITIONS=[
@@ -756,6 +762,108 @@ async function fHL(){
   }
 }
 
+// ---- WebSocket: Hyperliquid live prices ----
+let hlWs = null;
+let hlWsRetries = 0;
+let hlWsTickCount = 0;
+function connectHLWebSocket() {
+  if (hlWs && hlWs.readyState <= 1) return; // already open or connecting
+  try {
+    hlWs = new WebSocket(HL_WS_URL);
+    hlWs.onopen = () => {
+      hlWsRetries = 0;
+      hlWsTickCount = 0;
+      hlWs.send(JSON.stringify({method:'subscribe',subscription:{type:'allMids'}}));
+      setStatus('hl','ok','Hyperliquid  | WS connected');
+    };
+    hlWs.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        if (msg.channel === 'allMids' && msg.data && msg.data.mids) {
+          const mids = msg.data.mids;
+          hlWsTickCount++;
+          applyHLMids(mids);
+          cacheSet('hl', mids);
+          liveData.btc = mids['BTC'] || null;
+          liveData.wti = mids['@107'] || mids['WTI'] || null;
+          // update estimates when market is closed
+          const ms = getMarketState();
+          if (ms !== 'open') {
+            lastEstimates = computeEstimates(mids);
+          }
+          // re-render periodically (not every tick — throttle to every 5s)
+          if (!hlWs._lastRender || Date.now() - hlWs._lastRender > 5000) {
+            render();
+            hlWs._lastRender = Date.now();
+          }
+          const btcPx = mids['BTC'] ? '  | BTC ' + f(mids['BTC'], 0) : '';
+          setStatus('hl','ok','Hyperliquid  | WS live' + btcPx + ' · ' + hlWsTickCount + ' ticks');
+        }
+      } catch(_) {}
+    };
+    hlWs.onclose = () => {
+      setStatus('hl','pending','Hyperliquid  | WS reconnecting...');
+      const delay = Math.min(2000 * Math.pow(2, hlWsRetries), 30000);
+      hlWsRetries++;
+      setTimeout(connectHLWebSocket, delay);
+    };
+    hlWs.onerror = () => { hlWs.close(); };
+  } catch(e) {
+    setStatus('hl','err','Hyperliquid  | WS error: ' + e.message);
+  }
+}
+
+// ---- WebSocket: Finnhub stock prices ----
+let fhWs = null;
+let fhWsRetries = 0;
+let fhWsTickCount = 0;
+function connectFinnhubWebSocket() {
+  if (!FINNHUB_KEY) return;
+  if (fhWs && fhWs.readyState <= 1) return;
+  try {
+    fhWs = new WebSocket(FH_WS_BASE + FINNHUB_KEY);
+    fhWs.onopen = () => {
+      fhWsRetries = 0;
+      fhWsTickCount = 0;
+      // subscribe to all stock tickers
+      const equities = pos.filter(p => p.type !== 'option' && !/\s/.test(p.ticker));
+      const symbols = [...new Set(equities.map(p => p.yahooTicker || p.ticker))];
+      symbols.forEach(s => fhWs.send(JSON.stringify({type:'subscribe',symbol:s})));
+      setStatus('yf','ok','Finnhub WS  | ' + symbols.length + ' symbols');
+    };
+    fhWs.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'trade' && msg.data && msg.data.length) {
+          msg.data.forEach(t => {
+            pos.forEach(p => {
+              const sym = p.yahooTicker || p.ticker;
+              if (sym === t.s) { p.lastPrice = t.p; }
+            });
+          });
+          fhWsTickCount++;
+          // throttle re-render to every 3s
+          if (!fhWs._lastRender || Date.now() - fhWs._lastRender > 3000) {
+            render();
+            fhWs._lastRender = Date.now();
+          }
+          setStatus('yf','ok','Finnhub WS  | live · ' + fhWsTickCount + ' trades');
+        }
+      } catch(_) {}
+    };
+    fhWs.onclose = () => {
+      setStatus('yf','pending','Finnhub WS  | reconnecting...');
+      const delay = Math.min(2000 * Math.pow(2, fhWsRetries), 30000);
+      fhWsRetries++;
+      setTimeout(connectFinnhubWebSocket, delay);
+    };
+    fhWs.onerror = () => { fhWs.close(); };
+  } catch(e) {
+    setStatus('yf','err','Finnhub WS  | ' + e.message);
+  }
+}
+
+
 // ---- Polymarket ----
 const PM_MARKETS=[
   {slug:'us-x-iran-ceasefire-by-december-31',     v:'pd',b:'bd'},
@@ -1133,27 +1241,61 @@ function renderNews(items) {
 // ---- main refresh ----
 async function go(){
   document.getElementById('sl').textContent='Refreshing...';
-  setStatus('yf','pending','Yahoo...');
-  setStatus('hl','pending','Hyperliquid...');
   setStatus('pm','pending','Polymarket...');
   setStatus('nw','pending','News...');
   setStatus('hz','pending','Hormuz...');
-  await Promise.all([fYahoo(), fHL(), fPM(), fNews(), fHormuz()]);
+
+  const fetches = [fPM(), fNews(), fHormuz()];
+
+  // Use WebSocket for Hyperliquid if connected, otherwise HTTP poll
+  const hlWsLive = hlWs && hlWs.readyState === 1;
+  if (!hlWsLive) {
+    setStatus('hl','pending','Hyperliquid...');
+    fetches.push(fHL());
+  }
+
+  // Use Finnhub WS if connected + market open, otherwise Yahoo HTTP
+  const fhWsLive = fhWs && fhWs.readyState === 1;
+  if (!fhWsLive) {
+    setStatus('yf','pending','Yahoo...');
+    fetches.push(fYahoo());
+  }
+
+  await Promise.all(fetches);
+
+  // Start WebSocket connections (first call — subsequent calls are no-ops)
+  connectHLWebSocket();
+  if (FINNHUB_KEY) connectFinnhubWebSocket();
+
   // persist liveData for fast next load
   try { localStorage.setItem('hc_liveData', JSON.stringify(liveData)); } catch(_) {}
   render(); // re-render with estimates + latest data
   updateReview();
   const mkt = getMarketState();
+  const wsLabel = hlWsLive ? ' · WS live' : '';
   const mktLabel = mkt === 'open' ? '' : mkt === 'weekend' ? ' · wknd est.' : ' · o/n est.';
   const t=new Date().toLocaleTimeString();
   document.getElementById('ts').textContent=t;
   document.getElementById('lts').textContent='Updated '+t;
-  document.getElementById('sl').textContent='Positions  | auto-refresh 60s' + mktLabel;
+  document.getElementById('sl').textContent='Positions  | auto-refresh 60s' + mktLabel + wsLabel;
 }
 
 // invalidate cache when positions change so next fetch is fresh
 function invalidateCache() {
   ['hc_yf','hc_hl','hc_pm','hc_nw','hc_hz'].forEach(k => localStorage.removeItem(k));
+}
+
+function promptFinnhubKey() {
+  const key = prompt('Finnhub API key (free at finnhub.io/register):', FINNHUB_KEY);
+  if (key !== null) {
+    FINNHUB_KEY = key.trim();
+    localStorage.setItem('finnhub_key', FINNHUB_KEY);
+    if (FINNHUB_KEY) {
+      if (fhWs) { fhWs.onclose = null; fhWs.close(); fhWs = null; }
+      fhWsRetries = 0;
+      connectFinnhubWebSocket();
+    }
+  }
 }
 
 renderExitSignals();renderTimeline(FALLBACK_TIMELINE);render();go();setInterval(go,60000);

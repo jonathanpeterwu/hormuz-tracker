@@ -2,9 +2,22 @@
 // Uses Claude API to generate buy/hold/sell probabilities per position
 // with critique → refine loop at decreasing temperature.
 
-import { rules as RULES, rulesVersion } from '../rules/current.js';
+import { kv } from '@vercel/kv';
+import { rules as fileRules, rulesVersion as fileVersion } from '../rules/current.js';
 
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
+
+// Load rules: KV (hot-swappable) → filesystem (fallback)
+async function loadRules() {
+  try {
+    const kvRules = await kv.get('trading_rules');
+    if (kvRules) {
+      const kvVersion = await kv.get('rules_version') || 'kv';
+      return { rules: kvRules, version: kvVersion, source: 'kv' };
+    }
+  } catch (_) { /* KV not configured, use file */ }
+  return { rules: fileRules, version: fileVersion, source: 'file' };
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,6 +33,9 @@ export default async function handler(req, res) {
   if (!positions || !liveData) {
     return res.status(400).json({ error: 'positions and liveData required' });
   }
+
+  // Load active rules (KV → file fallback)
+  const { rules: RULES, version: rulesVersion, source: rulesSource } = await loadRules();
 
   // Build context snapshot
   const context = `
@@ -101,6 +117,7 @@ Respond with ONLY a JSON array, no other text.` }
       passes: Math.min(passes, 3),
       model: 'claude-sonnet-4-20250514',
       rulesVersion,
+      rulesSource,
       generatedAt: new Date().toISOString(),
     };
 

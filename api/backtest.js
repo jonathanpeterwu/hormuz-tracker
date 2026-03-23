@@ -32,9 +32,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // 2. Load snapshots
     const snapKeys = index.slice(0, limit + 50).map(ts => `signal_snap:${ts}`);
-    const rawSnaps = await Promise.all(snapKeys.map(k => kv.get(k)));
+    const rawSnaps = await kv.mget(...snapKeys);
     const allSnaps = rawSnaps
       .filter(Boolean)
       .map(s => typeof s === 'string' ? JSON.parse(s) : s)
@@ -44,29 +43,27 @@ export default async function handler(req, res) {
       return res.status(200).json({ snapshots: [], summary: { total: 0 } });
     }
 
-    // 3. Score each signal against future price
     const scored = [];
+    const snapTimes = allSnaps.map(s => new Date(s.ts).getTime());
+    const horizonMs = horizon * 3600 * 1000;
 
     for (let i = 0; i < allSnaps.length; i++) {
       const snap = allSnaps[i];
       if (!snap.signals?.length) continue;
 
-      // Find the next snapshot closest to `horizon` hours later
-      const snapTime = new Date(snap.ts).getTime();
-      const targetTime = snapTime + horizon * 3600 * 1000;
+      const snapTime = snapTimes[i];
+      const targetTime = snapTime + horizonMs;
       let outcomeSnap = null;
 
       for (let j = i + 1; j < allSnaps.length; j++) {
-        const t = new Date(allSnaps[j].ts).getTime();
-        if (t >= targetTime) {
+        if (snapTimes[j] >= targetTime) {
           outcomeSnap = allSnaps[j];
           break;
         }
-        // Use the last one if we don't reach the exact horizon
         outcomeSnap = allSnaps[j];
       }
 
-      if (!outcomeSnap) continue; // no future data yet
+      if (!outcomeSnap) continue;
 
       const actualHours = (new Date(outcomeSnap.ts).getTime() - snapTime) / 3600000;
 
@@ -119,30 +116,9 @@ export default async function handler(req, res) {
       ? scored.filter(s => s.rulesVersion === versionFilter)
       : scored;
 
-    // 5. Compute summary stats
     const summary = computeSummary(filtered);
-
-    // 6. Per-ticker breakdown
-    const byTicker = {};
-    for (const s of filtered) {
-      if (!byTicker[s.ticker]) byTicker[s.ticker] = [];
-      byTicker[s.ticker].push(s);
-    }
-    const tickerStats = {};
-    for (const [ticker, entries] of Object.entries(byTicker)) {
-      tickerStats[ticker] = computeSummary(entries);
-    }
-
-    // 7. Per-version breakdown
-    const byVersion = {};
-    for (const s of filtered) {
-      if (!byVersion[s.rulesVersion]) byVersion[s.rulesVersion] = [];
-      byVersion[s.rulesVersion].push(s);
-    }
-    const versionStats = {};
-    for (const [ver, entries] of Object.entries(byVersion)) {
-      versionStats[ver] = computeSummary(entries);
-    }
+    const tickerStats = groupAndSummarize(filtered, s => s.ticker);
+    const versionStats = groupAndSummarize(filtered, s => s.rulesVersion);
 
     // Return latest-first for display
     filtered.reverse();
@@ -159,6 +135,17 @@ export default async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
+}
+
+function groupAndSummarize(entries, keyFn) {
+  const groups = {};
+  for (const s of entries) {
+    const k = keyFn(s);
+    (groups[k] ||= []).push(s);
+  }
+  const stats = {};
+  for (const [k, v] of Object.entries(groups)) stats[k] = computeSummary(v);
+  return stats;
 }
 
 function computeSummary(entries) {

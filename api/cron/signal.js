@@ -1,4 +1,4 @@
-// Vercel Cron: auto-generates signal snapshots every 30 min.
+// Vercel Cron: auto-generates signal snapshots daily.
 // Fetches live prices, Polymarket, runs AI signal, stores snapshot in KV.
 // Configure in vercel.json: crons → /api/cron/signal
 //
@@ -31,12 +31,13 @@ export default async function handler(req, res) {
   let hlData = {};
   let pmData = {};
 
-  const tickers = await getPositionTickers();
+  const positions = await getPositions();
+  const tickers = positions.filter(p => p.type !== 'option').map(p => p.ticker);
 
   const [yahooResult, hlResult, pmResult] = await Promise.allSettled([
     fetchYahooPrices(tickers, req),
-    fetchHyperliquidPrices(req),
-    fetchPolymarketData(req),
+    fetchHyperliquidPrices(),
+    fetchPolymarketData(),
   ]);
 
   if (yahooResult.status === 'fulfilled') yahooData = yahooResult.value;
@@ -47,9 +48,6 @@ export default async function handler(req, res) {
 
   if (pmResult.status === 'fulfilled') pmData = pmResult.value;
   else errors.push('pm: ' + pmResult.reason?.message);
-
-  // 2. Build positions with live prices
-  const positions = await getPositions();
   for (const p of positions) {
     if (yahooData[p.ticker]) {
       p.lastPrice = yahooData[p.ticker];
@@ -68,20 +66,18 @@ export default async function handler(req, res) {
     sprOverride: true, // through ~late April 2026
   };
 
-  // 4. Generate AI signals via internal signal logic
   let signals = [];
+  let rulesVersion = 'n/a';
   try {
-    signals = await generateSignals(apiKey, positions, liveData);
+    const result = await generateSignals(apiKey, positions, liveData);
+    signals = result.signals;
+    rulesVersion = result.rulesVersion;
   } catch (e) {
     errors.push('signal: ' + e.message);
   }
 
-  // 5. Build price snapshot (all tickers + crypto + commodities)
-  const prices = {};
-  for (const [k, v] of Object.entries(yahooData)) prices[k] = v;
-  for (const [k, v] of Object.entries(hlData)) prices[k] = v;
+  const prices = { ...yahooData, ...hlData };
 
-  // 6. Store snapshot in KV
   const snap = {
     ts,
     prices,
@@ -92,7 +88,7 @@ export default async function handler(req, res) {
       ticker: p.ticker, qty: p.qty, avg: p.avg,
       lastPrice: p.lastPrice, pnl: p.pnl, label: p.label, type: p.type,
     })),
-    rulesVersion: signals.length ? 'from_signal' : 'n/a',
+    rulesVersion,
     errors: errors.length ? errors : undefined,
   };
 
@@ -127,11 +123,6 @@ async function getPositions() {
   return DEFAULT_POSITIONS;
 }
 
-async function getPositionTickers() {
-  const positions = await getPositions();
-  return positions.filter(p => p.type !== 'option').map(p => p.ticker);
-}
-
 async function fetchYahooPrices(tickers, req) {
   const symbols = tickers.join(',');
   const base = getBaseUrl(req);
@@ -147,7 +138,7 @@ async function fetchYahooPrices(tickers, req) {
   return result;
 }
 
-async function fetchHyperliquidPrices(req) {
+async function fetchHyperliquidPrices() {
   const resp = await fetch('https://api.hyperliquid.xyz/info', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -162,25 +153,27 @@ async function fetchHyperliquidPrices(req) {
   return result;
 }
 
-async function fetchPolymarketData(req) {
+async function fetchPolymarketData() {
   const slugs = {
     ceasefire: 'will-there-be-a-ceasefire-in-the-israel-hamas-war-by-december-31-2026',
     opsEnd: 'will-trump-end-military-operations-by-june-30',
     hormuz: 'will-the-strait-of-hormuz-return-to-normal-by-april-30',
   };
+  const entries = Object.entries(slugs);
+  const results = await Promise.allSettled(entries.map(async ([, slug]) => {
+    const resp = await fetch(`https://gamma-api.polymarket.com/markets?slug=${encodeURIComponent(slug)}&limit=1`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!data[0]?.outcomePrices) return null;
+    const prices = JSON.parse(data[0].outcomePrices);
+    return Math.round(parseFloat(prices[0]) * 100);
+  }));
   const result = {};
-  for (const [key, slug] of Object.entries(slugs)) {
-    try {
-      const resp = await fetch(`https://gamma-api.polymarket.com/markets?slug=${encodeURIComponent(slug)}&limit=1`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data[0]?.outcomePrices) {
-          const prices = JSON.parse(data[0].outcomePrices);
-          result[key] = Math.round(parseFloat(prices[0]) * 100);
-        }
-      }
-    } catch (_) {}
-  }
+  entries.forEach(([key], i) => {
+    if (results[i].status === 'fulfilled' && results[i].value != null) {
+      result[key] = results[i].value;
+    }
+  });
   return result;
 }
 
@@ -246,13 +239,14 @@ Respond with ONLY a JSON array.` }],
   const text = data.content?.[0]?.text || '';
   const match = text.match(/\[[\s\S]*\]/);
   if (!match) throw new Error('Parse failed');
-  return JSON.parse(match[0]).map(s => ({
+  const signals = JSON.parse(match[0]).map(s => ({
     ticker: s.ticker,
     buy: Math.round(s.buy || 0),
     hold: Math.round(s.hold || 0),
     sell: Math.round(s.sell || 0),
     reasoning: s.reasoning || '',
   }));
+  return { signals, rulesVersion };
 }
 
 function getBaseUrl(req) {

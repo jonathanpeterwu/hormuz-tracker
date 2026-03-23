@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backtest — Hormuz War Room</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+:root{--bg:#fff;--bg2:#f8fafc;--bg3:#f1f5f9;--text:#0f172a;--text2:#475569;--text3:#94a3b8;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--info:#2563eb;--bg-success:#22c55e;--bg-warning:#f59e0b;--bg-danger:#dc2626;--bg-info:#3b82f6;--border:rgba(15,23,42,0.12);--border2:rgba(15,23,42,0.25);--r:8px;--rl:12px}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--bg2:#1e293b;--bg3:#334155;--text:#f1f5f9;--text2:#94a3b8;--text3:#475569;--success:#4ade80;--warning:#fbbf24;--danger:#f87171;--info:#60a5fa;--bg-success:#16a34a;--bg-warning:#d97706;--bg-danger:#dc2626;--bg-info:#2563eb;--border:rgba(241,245,249,0.12);--border2:rgba(241,245,249,0.25)}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);padding:1.5rem;max-width:1100px;margin:0 auto;font-size:14px}
+.hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:1rem;border-bottom:.5px solid var(--border);margin-bottom:1.25rem}
+.ht{font-size:18px;font-weight:500}
+.back{font-size:13px;color:var(--info);text-decoration:none}
+.back:hover{text-decoration:underline}
+.sl{font-size:12px;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.75rem;margin-top:1.25rem}
+button{font-family:inherit;font-size:12px;padding:6px 14px;background:transparent;border:.5px solid var(--border2);border-radius:var(--r);color:var(--text2);cursor:pointer}
+button:hover{background:var(--bg2);color:var(--text)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--bg-info);color:#fff;border-color:var(--bg-info)}
+.btn-primary:hover{opacity:.9;background:var(--bg-info);color:#fff}
+select,input{font-family:inherit;font-size:12px;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:var(--r);padding:5px 8px}
+.up{color:var(--success)}.dn{color:var(--danger)}.fl{color:var(--text3)}
+
+/* Controls bar */
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem;padding:10px 14px;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r)}
+.controls label{font-size:11px;color:var(--text3)}
+
+/* Score cards */
+.scores{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.25rem}
+.sc{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:12px 14px;text-align:center}
+.sc-val{font-size:22px;font-weight:500;line-height:1.2}
+.sc-lbl{font-size:11px;color:var(--text3);margin-top:4px}
+@media(max-width:600px){.scores{grid-template-columns:repeat(2,1fr)}}
+
+/* Signal breakdown */
+.breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem}
+.bd{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.bd-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.bd-type{font-size:13px;font-weight:500}
+.bd-acc{font-size:18px;font-weight:500}
+.bd-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.bd-fill{height:100%;border-radius:3px;transition:width .5s}
+.bd-count{font-size:10px;color:var(--text3);margin-top:4px}
+
+/* Ticker grid */
+.ticker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:1.25rem}
+.tcard{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:10px 12px;cursor:pointer;transition:background .15s}
+.tcard:hover{background:var(--bg3)}
+.tcard.active{border-color:var(--bg-info)}
+.tc-ticker{font-size:13px;font-weight:500}
+.tc-stats{font-size:11px;color:var(--text2);margin-top:3px}
+.tc-acc{font-size:16px;font-weight:500;margin-top:2px}
+
+/* History table */
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;color:var(--text3);font-weight:400;text-align:left;padding:6px 8px 6px 0;border-bottom:.5px solid var(--border);white-space:nowrap}
+th.r{text-align:right}
+td{font-size:12px;padding:6px 8px 6px 0;border-bottom:.5px solid var(--border);color:var(--text);vertical-align:middle;white-space:nowrap}
+td.r{text-align:right}
+tr:last-child td{border-bottom:none}
+
+/* Signal bar (reused from main) */
+.sig-bar{display:inline-flex;height:8px;border-radius:2px;overflow:hidden;width:60px}
+.sig-bar span{display:block}.sig-buy{background:#16a34a}.sig-hold{background:#d97706}.sig-sell{background:#dc2626}
+
+.correct-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:500}
+.correct-yes{background:#dcfce7;color:#166534}
+.correct-no{background:#fee2e2;color:#991b1b}
+@media(prefers-color-scheme:dark){.correct-yes{background:#14532d;color:#86efac}.correct-no{background:#450a0a;color:#fca5a5}}
+
+/* Version comparison */
+.ver-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:1.25rem}
+.ver-card{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.ver-name{font-size:14px;font-weight:500;margin-bottom:4px}
+.ver-stat{font-size:12px;color:var(--text2);line-height:1.6}
+
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--info);border-radius:50%;animation:sp .6s linear infinite;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px}
+.empty-icon{font-size:32px;margin-bottom:8px}
+
+/* Equity curve (simple CSS chart) */
+.chart-wrap{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:1.25rem;position:relative;height:180px;overflow:hidden}
+.chart-line{position:absolute;bottom:14px;left:14px;right:14px;top:28px}
+.chart-title{font-size:12px;color:var(--text2);font-weight:500}
+.chart-svg{width:100%;height:100%}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="ht">Signal Backtest</div>
+  <a href="/" class="back">&larr; Back to War Room</a>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <label>Horizon:</label>
+  <select id="horizon" onchange="reload()">
+    <option value="4">4h</option>
+    <option value="8">8h</option>
+    <option value="24" selected>24h</option>
+    <option value="48">48h</option>
+    <option value="72">72h</option>
+    <option value="168">1 week</option>
+  </select>
+  <label>Limit:</label>
+  <select id="limit" onchange="reload()">
+    <option value="25">25</option>
+    <option value="50" selected>50</option>
+    <option value="100">100</option>
+    <option value="200">200</option>
+  </select>
+  <label>Ticker:</label>
+  <select id="ticker-filter" onchange="reload()">
+    <option value="">All</option>
+  </select>
+  <div style="flex:1"></div>
+  <button onclick="triggerCron()" id="cron-btn">Run snapshot now</button>
+  <button class="btn-primary" onclick="reload()">Refresh</button>
+</div>
+
+<!-- Summary scores -->
+<div class="scores" id="scores">
+  <div class="sc"><div class="sc-val" id="sc-accuracy"><span class="spin"></span></div><div class="sc-lbl">Accuracy</div></div>
+  <div class="sc"><div class="sc-val" id="sc-total">—</div><div class="sc-lbl">Signals scored</div></div>
+  <div class="sc"><div class="sc-val" id="sc-avg-ret">—</div><div class="sc-lbl">Avg return</div></div>
+  <div class="sc"><div class="sc-val" id="sc-weighted">—</div><div class="sc-lbl">Weighted return</div></div>
+  <div class="sc"><div class="sc-val" id="sc-confidence">—</div><div class="sc-lbl">Avg confidence</div></div>
+</div>
+
+<!-- Buy / Hold / Sell breakdown -->
+<div class="sl">Signal Breakdown</div>
+<div class="breakdown" id="breakdown">
+  <div class="bd" id="bd-buy"><div class="bd-hdr"><span class="bd-type up">BUY</span><span class="bd-acc">—</span></div><div class="bd-bar"><div class="bd-fill" style="width:0;background:var(--bg-success)"></div></div><div class="bd-count">0 signals</div></div>
+  <div class="bd" id="bd-hold"><div class="bd-hdr"><span class="bd-type" style="color:var(--warning)">HOLD</span><span class="bd-acc">—</span></div><div class="bd-bar"><div class="bd-fill" style="width:0;background:var(--bg-warning)"></div></div><div class="bd-count">0 signals</div></div>
+  <div class="bd" id="bd-sell"><div class="bd-hdr"><span class="bd-type dn">SELL</span><span class="bd-acc">—</span></div><div class="bd-bar"><div class="bd-fill" style="width:0;background:var(--bg-danger)"></div></div><div class="bd-count">0 signals</div></div>
+</div>
+
+<!-- Equity curve -->
+<div class="chart-wrap" id="chart-wrap">
+  <div class="chart-title">Cumulative weighted return</div>
+  <div class="chart-line">
+    <svg class="chart-svg" id="equity-chart" viewBox="0 0 800 120" preserveAspectRatio="none"></svg>
+  </div>
+</div>
+
+<!-- Per-ticker cards -->
+<div class="sl">Per Ticker</div>
+<div class="ticker-grid" id="ticker-grid"></div>
+
+<!-- Version comparison -->
+<div class="sl" id="ver-label" style="display:none">Rules Version Comparison</div>
+<div class="ver-grid" id="ver-grid"></div>
+
+<!-- Signal history table -->
+<div class="sl">Signal History</div>
+<div id="history-table"></div>
+
+<script>
+let data = null;
+
+async function reload() {
+  const horizon = document.getElementById('horizon').value;
+  const limit = document.getElementById('limit').value;
+  const ticker = document.getElementById('ticker-filter').value;
+  const params = new URLSearchParams({ horizon, limit });
+  if (ticker) params.set('ticker', ticker);
+
+  document.getElementById('sc-accuracy').innerHTML = '<span class="spin"></span>';
+
+  try {
+    const r = await fetch('/api/backtest?' + params);
+    data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Failed');
+    render();
+  } catch (e) {
+    document.getElementById('sc-accuracy').textContent = 'Error';
+    console.error(e);
+  }
+}
+
+function render() {
+  if (!data) return;
+  const { summary: s, snapshots, tickerStats, versionStats } = data;
+
+  // Score cards
+  if (!s || s.total === 0) {
+    document.getElementById('sc-accuracy').textContent = '—';
+    document.getElementById('sc-total').textContent = '0';
+    document.getElementById('sc-avg-ret').textContent = '—';
+    document.getElementById('sc-weighted').textContent = '—';
+    document.getElementById('sc-confidence').textContent = '—';
+    document.getElementById('history-table').innerHTML = '<div class="empty"><div class="empty-icon">&#128202;</div>No signal history yet.<br>Cron runs every 30 minutes, or click "Run snapshot now" to start.</div>';
+    return;
+  }
+
+  const accColor = s.accuracy >= 60 ? 'up' : s.accuracy >= 45 ? 'fl' : 'dn';
+  document.getElementById('sc-accuracy').innerHTML = `<span class="${accColor}">${s.accuracy}%</span>`;
+  document.getElementById('sc-total').textContent = s.total;
+  document.getElementById('sc-avg-ret').innerHTML = `<span class="${s.avgReturn >= 0 ? 'up' : 'dn'}">${s.avgReturn >= 0 ? '+' : ''}${s.avgReturn}%</span>`;
+  document.getElementById('sc-weighted').innerHTML = `<span class="${s.weightedReturn >= 0 ? 'up' : 'dn'}">${s.weightedReturn >= 0 ? '+' : ''}${s.weightedReturn}%</span>`;
+  document.getElementById('sc-confidence').textContent = s.avgConfidence;
+
+  // Breakdown
+  for (const type of ['buy', 'hold', 'sell']) {
+    const b = s.breakdown?.[type] || { count: 0, accuracy: 0 };
+    const el = document.getElementById(`bd-${type}`);
+    el.querySelector('.bd-acc').textContent = b.count ? b.accuracy + '%' : '—';
+    el.querySelector('.bd-fill').style.width = b.accuracy + '%';
+    el.querySelector('.bd-count').textContent = b.count + ' signals';
+  }
+
+  // Populate ticker filter
+  const tf = document.getElementById('ticker-filter');
+  const currentVal = tf.value;
+  const tickers = Object.keys(tickerStats || {}).sort();
+  if (tf.options.length <= 1 && tickers.length) {
+    tickers.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      tf.appendChild(opt);
+    });
+    tf.value = currentVal;
+  }
+
+  // Ticker cards
+  const tg = document.getElementById('ticker-grid');
+  tg.innerHTML = tickers.map(t => {
+    const ts = tickerStats[t];
+    const accCls = ts.accuracy >= 60 ? 'up' : ts.accuracy >= 45 ? '' : 'dn';
+    return `<div class="tcard" onclick="filterTicker('${t}')">
+      <div class="tc-ticker">${t}</div>
+      <div class="tc-acc ${accCls}">${ts.accuracy}%</div>
+      <div class="tc-stats">${ts.total} signals · avg ${ts.avgReturn >= 0 ? '+' : ''}${ts.avgReturn}%</div>
+    </div>`;
+  }).join('');
+
+  // Version comparison
+  const versions = Object.keys(versionStats || {});
+  const vl = document.getElementById('ver-label');
+  const vg = document.getElementById('ver-grid');
+  if (versions.length > 0) {
+    vl.style.display = '';
+    vg.innerHTML = versions.map(v => {
+      const vs = versionStats[v];
+      const accCls = vs.accuracy >= 60 ? 'up' : vs.accuracy >= 45 ? '' : 'dn';
+      return `<div class="ver-card">
+        <div class="ver-name">${esc(v)}</div>
+        <div class="ver-stat">Accuracy: <strong class="${accCls}">${vs.accuracy}%</strong> (${vs.total} signals)</div>
+        <div class="ver-stat">Avg return: ${vs.avgReturn >= 0 ? '+' : ''}${vs.avgReturn}%</div>
+        <div class="ver-stat">Weighted: ${vs.weightedReturn >= 0 ? '+' : ''}${vs.weightedReturn}%</div>
+        <div class="ver-stat">Buy ${vs.breakdown?.buy?.accuracy || 0}% · Hold ${vs.breakdown?.hold?.accuracy || 0}% · Sell ${vs.breakdown?.sell?.accuracy || 0}%</div>
+      </div>`;
+    }).join('');
+  } else {
+    vl.style.display = 'none';
+    vg.innerHTML = '';
+  }
+
+  // Equity curve
+  drawEquityCurve(snapshots);
+
+  // History table
+  const ht = document.getElementById('history-table');
+  if (!snapshots?.length) {
+    ht.innerHTML = '<div class="empty">No scored signals for this filter.</div>';
+    return;
+  }
+
+  ht.innerHTML = `<table>
+    <tr>
+      <th>Time</th>
+      <th>Ticker</th>
+      <th>Signal</th>
+      <th>Dominant</th>
+      <th class="r">Entry</th>
+      <th class="r">Exit (${data.horizon}h)</th>
+      <th class="r">Return</th>
+      <th>Result</th>
+      <th>Reasoning</th>
+    </tr>
+    ${snapshots.map(s => {
+      const retCls = s.returnPct >= 0 ? 'up' : 'dn';
+      const domCls = s.dominant === 'buy' ? 'up' : s.dominant === 'sell' ? 'dn' : 'fl';
+      const time = new Date(s.ts).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      return `<tr>
+        <td style="font-size:11px;color:var(--text3)">${time}</td>
+        <td style="font-weight:500">${s.ticker}</td>
+        <td><div class="sig-bar"><span class="sig-buy" style="width:${s.signal.buy}%"></span><span class="sig-hold" style="width:${s.signal.hold}%"></span><span class="sig-sell" style="width:${s.signal.sell}%"></span></div></td>
+        <td class="${domCls}" style="font-weight:500;font-size:11px;text-transform:uppercase">${s.dominant} ${s.confidence}%</td>
+        <td class="r">$${s.entryPrice}</td>
+        <td class="r">$${s.exitPrice}</td>
+        <td class="r ${retCls}">${s.returnPct >= 0 ? '+' : ''}${s.returnPct}%</td>
+        <td><span class="correct-badge ${s.correct ? 'correct-yes' : 'correct-no'}">${s.correct ? 'HIT' : 'MISS'}</span></td>
+        <td style="font-size:11px;color:var(--text2);white-space:normal;max-width:220px;overflow:hidden;text-overflow:ellipsis" title="${esc(s.reasoning)}">${esc(truncate(s.reasoning, 80))}</td>
+      </tr>`;
+    }).join('')}
+  </table>`;
+}
+
+function drawEquityCurve(snapshots) {
+  const svg = document.getElementById('equity-chart');
+  if (!snapshots?.length) { svg.innerHTML = ''; return; }
+
+  // Compute cumulative weighted return (chronological order)
+  const sorted = [...snapshots].reverse();
+  let cum = 0;
+  const points = sorted.map((s, i) => {
+    const dir = s.dominant === 'buy' ? 1 : s.dominant === 'sell' ? -1 : 0;
+    cum += s.returnPct * dir * s.confidence / 100;
+    return { x: i, y: cum };
+  });
+
+  const minY = Math.min(0, ...points.map(p => p.y));
+  const maxY = Math.max(0, ...points.map(p => p.y));
+  const range = maxY - minY || 1;
+  const w = 800, h = 120;
+
+  const pathPoints = points.map((p, i) => {
+    const x = (i / Math.max(1, points.length - 1)) * w;
+    const y = h - ((p.y - minY) / range) * h;
+    return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+
+  const zeroY = h - ((0 - minY) / range) * h;
+  const lastPoint = points[points.length - 1];
+  const color = lastPoint.y >= 0 ? 'var(--success)' : 'var(--danger)';
+
+  svg.innerHTML = `
+    <line x1="0" y1="${zeroY}" x2="${w}" y2="${zeroY}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4"/>
+    <path d="${pathPoints}" fill="none" stroke="${color}" stroke-width="2"/>
+    <text x="${w - 4}" y="${zeroY - 4}" text-anchor="end" fill="var(--text3)" font-size="10">0%</text>
+    <text x="${w - 4}" y="12" text-anchor="end" fill="var(--text3)" font-size="10">${maxY.toFixed(1)}%</text>
+    <text x="${w - 4}" y="${h - 2}" text-anchor="end" fill="var(--text3)" font-size="10">${minY.toFixed(1)}%</text>
+  `;
+}
+
+function filterTicker(t) {
+  document.getElementById('ticker-filter').value = t;
+  reload();
+}
+
+async function triggerCron() {
+  const token = localStorage.getItem('rules_token');
+  if (!token) {
+    alert('Set your secret token on the Settings page first.');
+    return;
+  }
+  const btn = document.getElementById('cron-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Running...';
+
+  try {
+    const r = await fetch('/api/cron/signal', {
+      headers: { 'Authorization': 'Bearer ' + token },
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    btn.textContent = 'Done! ' + d.signalCount + ' signals';
+    setTimeout(() => { btn.textContent = 'Run snapshot now'; btn.disabled = false; reload(); }, 2000);
+  } catch (e) {
+    btn.textContent = 'Error: ' + e.message;
+    setTimeout(() => { btn.textContent = 'Run snapshot now'; btn.disabled = false; }, 3000);
+  }
+}
+
+function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function truncate(s, n) { return (s || '').length > n ? s.slice(0, n) + '...' : s || ''; }
+
+reload();
+</script>
+</body>
+</html>

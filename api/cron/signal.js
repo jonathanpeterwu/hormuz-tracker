@@ -56,7 +56,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // 3. Build liveData for signal API
   const liveData = {
     btc: hlData.BTC || yahooData['BTC-USD'] || null,
     wti: hlData['@107'] || null,
@@ -64,7 +63,9 @@ export default async function handler(req, res) {
     ceasefire: pmData.ceasefire ?? null,
     opsEnd: pmData.opsEnd ?? null,
     hormuz: pmData.hormuz ?? null,
-    sprOverride: true, // through ~late April 2026
+    mar31Ceasefire: pmData.mar31Ceasefire ?? null,
+    militaryAction: pmData.militaryAction ?? null,
+    sprOverride: new Date() < new Date('2026-04-15'),
   };
 
   let signals = [];
@@ -159,6 +160,8 @@ async function fetchPolymarketData() {
     ceasefire: 'will-there-be-a-ceasefire-in-the-israel-hamas-war-by-december-31-2026',
     opsEnd: 'will-trump-end-military-operations-by-june-30',
     hormuz: 'will-the-strait-of-hormuz-return-to-normal-by-april-30',
+    mar31Ceasefire: 'us-x-iran-ceasefire-by-march-31',
+    militaryAction: 'will-iran-take-military-action-by-march-31',
   };
   const entries = Object.entries(slugs);
   const results = await Promise.allSettled(entries.map(async ([, slug]) => {
@@ -202,9 +205,11 @@ LIVE MARKET DATA (as of ${new Date().toISOString()}):
 - BTC: ${liveData.btc || 'n/a'}
 - WTI (@107 perp): ${liveData.wti || 'n/a'}
 - Gold (via GLD): ${liveData.gold || 'n/a'}
-- Polymarket — Ceasefire Dec 31: ${liveData.ceasefire ?? 'n/a'}%
-- Polymarket — Ops-end Jun 30: ${liveData.opsEnd ?? 'n/a'}%
-- Polymarket — Hormuz normal Apr 30: ${liveData.hormuz ?? 'n/a'}%
+- T1: Military action Mar 31: ${liveData.militaryAction ?? 'n/a'}%
+- T1: Hormuz normal Apr 30: ${liveData.hormuz ?? 'n/a'}%
+- T2: Ops-end Jun 30: ${liveData.opsEnd ?? 'n/a'}% (trim trigger at 80%)
+- T3: Ceasefire Dec 31: ${liveData.ceasefire ?? 'n/a'}% (9-month cumulative — NOT imminent, low weight)
+- T3: Ceasefire Mar 31: ${liveData.mar31Ceasefire ?? 'n/a'}% (specific near-term — HIGH weight if >35%)
 - SPR override active: ${liveData.sprOverride ? 'YES' : 'NO'}
 
 POSITIONS:

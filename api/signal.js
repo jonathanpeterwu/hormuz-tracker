@@ -48,7 +48,9 @@ LIVE MARKET DATA (as of ${new Date().toISOString()}):
 - T2: Ops-end Jun 30: ${liveData.opsEnd ?? 'n/a'}% (trim trigger at 80%)
 - T3: Ceasefire Dec 31: ${liveData.ceasefire ?? 'n/a'}% (9-month cumulative — NOT imminent, low weight)
 - T3: Ceasefire Mar 31: ${liveData.mar31Ceasefire ?? 'n/a'}% (specific near-term — HIGH weight if >35%)
-- SPR override active: ${liveData.sprOverride !== false ? 'YES (through ~late April)' : 'NO (expired)'}
+- 10Y UST yield: ${liveData.ust10y ?? 'n/a'}% (ADD TLT ≥4.60, SPIRAL ≥4.70)
+- USDJPY: ${liveData.usdjpy ?? 'n/a'} (STRESS if USDJPY×Oil >15,500)
+- SPR swap ceiling: $110-115 (Wright rolling structure, NOT depleting)
 
 POSITIONS:
 ${positions.map(p => {

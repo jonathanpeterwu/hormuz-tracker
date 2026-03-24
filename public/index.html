@@ -118,6 +118,38 @@ button:hover{background:var(--bg2);color:var(--text)}
 .modal-tabs{display:flex;gap:0;margin-bottom:1rem;border-bottom:1px solid var(--border)}
 .modal-tab{font-size:12px;padding:8px 16px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
 .modal-tab.active{color:var(--text);border-bottom-color:var(--bg-info)}
+/* SPR clock */
+.spr-clock{background:var(--bg2);border:.5px solid var(--border);border-left:2px solid var(--success);border-radius:var(--r);padding:12px 14px;margin-bottom:1.25rem}
+.spr-clock.spr-warn{border-left-color:var(--warning)}
+.spr-clock.spr-crit{border-left-color:var(--danger)}
+.spr-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.spr-title{font-size:12px;font-weight:500}.spr-days{font-size:14px;font-weight:500}
+.spr-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:4px}
+.spr-fill{height:100%;background:var(--bg-success);border-radius:3px;transition:width .5s}
+.spr-clock.spr-warn .spr-fill{background:var(--bg-warning)}
+.spr-clock.spr-crit .spr-fill{background:var(--bg-danger)}
+.spr-detail{font-size:11px;color:var(--text3);display:flex;justify-content:space-between}
+/* Mar 31 ceasefire tracker */
+.mar31{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:1.25rem}
+.mar31.mar31-warn{border-left:2px solid var(--warning)}
+.mar31.mar31-stage{border-left:2px solid var(--bg-warning)}
+.mar31.mar31-trim{border-left:2px solid var(--danger)}
+.mar31-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.mar31-title{font-size:12px;font-weight:500}.mar31-pct{font-size:18px;font-weight:500}
+.mar31-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;position:relative;margin-bottom:6px}
+.mar31-fill{height:100%;border-radius:4px;transition:width .5s}
+.mar31-thresh{position:absolute;top:0;bottom:0;width:1px;background:var(--text3);opacity:.5}
+.mar31-detail{font-size:11px;color:var(--text3);display:flex;justify-content:space-between}
+.mar31-alert{font-size:12px;font-weight:500;margin-top:6px;padding:6px 10px;border-radius:var(--r)}
+/* Tier badges */
+.tier-badge{display:inline-block;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;letter-spacing:.04em;vertical-align:middle;margin-left:6px}
+.tier-t1{background:#fee2e2;color:#991b1b}.tier-t2{background:#fef3c7;color:#854d0e}.tier-t3{background:#e0e7ff;color:#3730a3}
+@media(prefers-color-scheme:dark){.tier-t1{background:#450a0a;color:#fca5a5}.tier-t2{background:#451a03;color:#fcd34d}.tier-t3{background:#1e1b4b;color:#a5b4fc}}
+.tier-hdr{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:8px;margin-bottom:4px;padding-left:2px}
+.tier-hdr:first-child{margin-top:0}
+/* Divergence banner */
+.diverge-banner{background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--r);padding:10px 14px;margin-bottom:1.25rem;font-size:12px;color:#854d0e;line-height:1.5}
+@media(prefers-color-scheme:dark){.diverge-banner{background:#451a03;border-color:#d97706;color:#fcd34d}}
 @media(max-width:600px){.mets,.pg,.vg{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -156,8 +188,28 @@ button:hover{background:var(--bg2);color:var(--text)}
 </table>
 
 <div class="div"></div>
-<div class="sl">Polymarket — exit signals <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)">(sorted by urgency)</span></div>
+<div class="sl">Polymarket — exit signals <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)">(tiered by signal quality)</span></div>
+<div id="diverge-banner" style="display:none"></div>
 <div class="pml" id="pm-list"></div>
+
+<!-- Mar 31 ceasefire tracker -->
+<div class="mar31" id="mar31-tracker" style="display:none;margin-top:10px">
+  <div class="mar31-hdr">
+    <span class="mar31-title">Ceasefire by Mar 31 — specific outcome tracker</span>
+    <span class="mar31-pct" id="mar31-pct">—</span>
+  </div>
+  <div class="mar31-bar">
+    <div class="mar31-fill" id="mar31-fill" style="width:0;background:var(--bg-success)"></div>
+    <div class="mar31-thresh" style="left:35%" title="35% — watch"></div>
+    <div class="mar31-thresh" style="left:40%" title="40% — prepare trim"></div>
+    <div class="mar31-thresh" style="left:50%" title="50% — execute trim"></div>
+  </div>
+  <div class="mar31-detail">
+    <span id="mar31-countdown">—</span>
+    <span id="mar31-delta"></span>
+  </div>
+  <div id="mar31-alert"></div>
+</div>
 
 <div class="div"></div>
 <div class="sl">Hyperliquid perps — 24/7 pricing</div>
@@ -217,20 +269,34 @@ button:hover{background:var(--bg2);color:var(--text)}
   </div>
 </div>
 
+<!-- SPR Clock -->
+<div class="spr-clock" id="spr-clock">
+  <div class="spr-hdr">
+    <span class="spr-title">SPR Clock — 400M bbl emergency release</span>
+    <span class="spr-days" id="spr-days">—</span>
+  </div>
+  <div class="spr-bar"><div class="spr-fill" id="spr-fill" style="width:0"></div></div>
+  <div class="spr-detail">
+    <span id="spr-status">Started Mar 19 · ~27 days cover</span>
+    <span id="spr-gap">14.7M bbl/day uncovered</span>
+  </div>
+</div>
+
 <div class="div"></div>
 <div class="sl">Disruption timeline <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="tl-label">— from hormuztracker.com</span></div>
 <div class="tl-list" id="tl-list"><div style="font-size:12px;color:var(--text3)">Loading timeline...</div></div>
 
 <div class="div"></div>
-<div class="sl">Exit triggers</div>
+<div class="sl">Exit triggers — v3 rules (all 3 required simultaneously)</div>
 <div class="tb">
-  <div class="tr2"><div class="ttn">1</div><div class="ttt"><strong>Ops-end Jun 30 >80%</strong> + holds 24h + Iran mil vs Israel <70% + vessels dropping → trim 50% oil. Primary near-term signal.</div></div>
-  <div class="tr2"><div class="ttn">2</div><div class="ttt"><strong>Oil -10%+ intraday</strong> + vessel count dropping + PM Tier 1 shift → trim 50%. All 3 required. Oil -7% on Trump post w/ Iran denial = HOLD.</div></div>
-  <div class="tr2"><div class="ttn">3</div><div class="ttt"><strong>Forced liquidation:</strong> oil + BTC + SOX all -10%+ same session + VIX >40 → trim 30% only, 25% cash, wait 72h. Cascade ≠ thesis death.</div></div>
-  <div class="tr2"><div class="ttn">4</div><div class="ttt">Vessels inside Gulf: 2,500 → 2,000 watch · → 1,500 trim ⅓ oil · → 1,000 major exit. Daily transits >20 = supply restoration.</div></div>
-  <div class="tr2"><div class="ttn">5</div><div class="ttt">BNO $65–68 trim ⅓ · $75–80 trim ⅓ · USO $138–142 trim ⅓ · GUSH +40–50% from entry trim aggressively.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--success)">⛽</div><div class="ttt"><strong>SPR clock override:</strong> if SPR cover <10 days → NO oil trim regardless of price. Oil flush during SPR drawdown = market mispricing supply fix that isn't coming. Override active ~through late April.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--text3)">—</div><div class="ttt"><strong>Trump filter:</strong> oil drop on Trump verbal + Iran denies within 24h + vessel count unchanged = automatic HOLD, not a trigger. Dec 31 ceasefire is cumulative, not imminent.</div></div>
+  <div class="tr2"><div class="ttn">1</div><div class="ttt"><strong>Oil -10%+ intraday</strong> (was 5%, raised to filter Trump noise). NOT -5% on a Trump post.</div></div>
+  <div class="tr2"><div class="ttn">2</div><div class="ttt"><strong>Physical confirmation:</strong> vessel count dropping (2,500 → 2,000 watch · → 1,500 trim · → 1,000 exit) OR daily transits >20.</div></div>
+  <div class="tr2"><div class="ttn">3</div><div class="ttt"><strong>Ops-end Jun 30 ≥80%</strong> held 24h AND Iran mil vs Israel <70%. Primary PM trim trigger.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--danger)">→</div><div class="ttt"><strong>On trigger (all 3 + no vetoes):</strong> TRIM 50% OIL — GUSH sell 200, USO sell 62, OILK sell 100.</div></div>
+  <div class="tr2"><div class="ttn">4</div><div class="ttt"><strong>Forced liquidation:</strong> oil + BTC + SOX all -10%+ same session + VIX >40 → trim 30% only, 25% cash, wait 72h. Cascade ≠ thesis death.</div></div>
+  <div class="tr2"><div class="ttn">5</div><div class="ttt">GUSH +40–50% from entry → aggressive trim zone. BNO $65–68 trim ⅓ · $75–80 trim ⅓ · USO $138–142 trim ⅓.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--success)">⛽</div><div class="ttt"><strong>SPR clock override:</strong> SPR ~27 days cover from Mar 19. While active → NO oil trim. Oil flush during SPR drawdown = market mispricing supply fix that isn't coming.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--text3)">—</div><div class="ttt"><strong>Trump filter (auto-veto):</strong> drop on Trump verbal + Iran denies 24h + vessel count unchanged + T1 markets unchanged = HOLD regardless. Dec 31 ceasefire is 9-month cumulative, NOT imminent.</div></div>
 </div>
 
 <div class="ft">
@@ -454,14 +520,17 @@ function computeEstimates(mids) {
   return est;
 }
 
-// ---- exit signals (Polymarket) ----
+// ---- exit signals (Polymarket) — tiered by signal quality ----
 const EXIT_SIGNALS = [
-  { id:'ceasefire', label:'Ceasefire by Dec 31', deadline:'2026-12-31', slug:'us-x-iran-ceasefire-by-december-31', color:'var(--bg-success)', pctClass:'up', pct:69, impact:'medium', action:'Cumulative — not a near-term trim trigger' },
-  { id:'military', label:'Military action through Mar 31', deadline:'2026-03-31', slug:null, color:'var(--bg-danger)', pctClass:'dn', pct:90, impact:'high', action:'Confirms thesis — hold' },
-  { id:'opsend', label:'Trump ops-end Jun 30', deadline:'2026-06-30', slug:'trump-ends-iran-military-operations-by-june-30', color:'var(--bg-danger)', pctClass:'dn', pct:75, impact:'high', action:'If >80% trim 30-50% oil' },
-  { id:'hormuz', label:'Hormuz normal by end of April', deadline:'2026-04-30', slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30', color:'var(--bg-warning)', pctClass:'wn', pct:27, impact:'high', action:'If >60% trim oil' },
-  { id:'crude100', label:'Crude hits $100 by end of March', deadline:'2026-03-31', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:89, impact:'medium', action:'Take profit on USO/OILK' },
-  { id:'ships', label:'20+ ships transit Hormuz in March', deadline:'2026-03-31', slug:null, color:'var(--bg-info)', pctClass:'inf', pct:35, impact:'medium', action:'Watch vessel counts' },
+  // TIER 1 — GROUND TRUTH (weight: HIGH, unmanipulable physical signals)
+  { id:'military', tier:1, label:'Military action through Mar 31', deadline:'2026-03-31', slug:'will-iran-take-military-action-by-march-31', color:'var(--bg-danger)', pctClass:'dn', pct:90, impact:'high', action:'Watch if <70% — thesis weakening' },
+  { id:'hormuz', tier:1, label:'Hormuz normal by end of April', deadline:'2026-04-30', slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30', color:'var(--bg-warning)', pctClass:'wn', pct:27, impact:'high', action:'If >60% trim oil' },
+  { id:'ships', tier:1, label:'20+ ships transit Hormuz in March', deadline:'2026-03-31', slug:null, color:'var(--bg-info)', pctClass:'inf', pct:35, impact:'medium', action:'Watch vessel counts' },
+  { id:'crude100', tier:1, label:'Crude hits $100 by end of March', deadline:'2026-03-31', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:89, impact:'medium', action:'Take profit on USO/OILK' },
+  // TIER 2 — STRUCTURAL (weight: MEDIUM)
+  { id:'opsend', tier:2, label:'Trump ops-end Jun 30', deadline:'2026-06-30', slug:'trump-ends-iran-military-operations-by-june-30', color:'var(--bg-danger)', pctClass:'dn', pct:75, impact:'high', action:'Trim trigger at 80% + physical confirm' },
+  // TIER 3 — NOISE / TRUMP BETA (weight: LOW, discounted)
+  { id:'ceasefire', tier:3, label:'Ceasefire by Dec 31', deadline:'2026-12-31', slug:'us-x-iran-ceasefire-by-december-31', color:'var(--bg-success)', pctClass:'up', pct:69, impact:'low', action:'9-month cumulative — NOT imminent' },
 ];
 
 function daysUntil(dateStr) {
@@ -482,19 +551,54 @@ function urgencyScore(sig) {
 function renderExitSignals() {
   const list = document.getElementById('pm-list');
   if (!list) return;
-  const sorted = [...EXIT_SIGNALS].sort((a, b) => urgencyScore(a) - urgencyScore(b));
-  list.innerHTML = sorted.map(s => {
-    const days = daysUntil(s.deadline);
-    const daysLabel = days === 0 ? 'today' : days <= 7 ? days + 'd left' : Math.ceil(days / 7) + 'w left';
-    const urgency = days <= 10 ? 'dn' : days <= 30 ? 'wn' : 'fl';
-    const pmUrl = s.slug ? 'https://polymarket.com/event/' + s.slug : null;
-    const clickAttr = pmUrl ? ` onclick="window.open('${pmUrl}','_blank')" style="cursor:pointer"` : '';
-    return `<div class="pmr"${clickAttr}>
-      <div class="pmq">${s.label}${pmUrl ? '<span style="font-size:9px;color:var(--text3);margin-left:4px">↗</span>' : ''}<span style="font-size:10px;color:var(--text3);margin-left:6px" class="${urgency}">${daysLabel}</span></div>
-      <div class="pmbw"><div class="pmbf" id="b-${s.id}" style="width:${s.pct}%;background:${s.color}"></div></div>
-      <div class="pmv ${s.pctClass}" id="p-${s.id}">${s.pct}%</div>
-    </div>`;
-  }).join('');
+
+  // Group by tier, sort within each tier by urgency
+  const tiers = {1: [], 2: [], 3: []};
+  EXIT_SIGNALS.forEach(s => (tiers[s.tier] ||= []).push(s));
+  const tierLabels = {1: 'Tier 1 — Ground truth', 2: 'Tier 2 — Structural', 3: 'Tier 3 — Noise / Trump beta'};
+  const tierBadge = {1: 'tier-t1', 2: 'tier-t2', 3: 'tier-t3'};
+
+  let html = '';
+  for (const tier of [1, 2, 3]) {
+    const signals = tiers[tier];
+    if (!signals.length) continue;
+    signals.sort((a, b) => urgencyScore(a) - urgencyScore(b));
+    html += `<div class="tier-hdr">${tierLabels[tier]}</div>`;
+    html += signals.map(s => {
+      const days = daysUntil(s.deadline);
+      const daysLabel = days === 0 ? 'today' : days <= 7 ? days + 'd left' : Math.ceil(days / 7) + 'w left';
+      const urgency = days <= 10 ? 'dn' : days <= 30 ? 'wn' : 'fl';
+      const pmUrl = s.slug ? 'https://polymarket.com/event/' + s.slug : null;
+      const clickAttr = pmUrl ? ` onclick="window.open('${pmUrl}','_blank')" style="cursor:pointer"` : '';
+      const noiseTag = s.tier === 3 ? ' <span class="tier-badge tier-t3">⚠️ HIGH TRUMP-BETA</span>' : '';
+      return `<div class="pmr"${clickAttr}>
+        <div class="pmq">${s.label}${noiseTag}${pmUrl ? '<span style="font-size:9px;color:var(--text3);margin-left:4px">↗</span>' : ''}<span style="font-size:10px;color:var(--text3);margin-left:6px" class="${urgency}">${daysLabel}</span></div>
+        <div class="pmbw"><div class="pmbf" id="b-${s.id}" style="width:${s.pct}%;background:${s.color}"></div></div>
+        <div class="pmv ${s.pctClass}" id="p-${s.id}">${s.pct}%</div>
+      </div>`;
+    }).join('');
+  }
+  list.innerHTML = html;
+
+  // T1/T3 divergence check
+  checkDivergence();
+}
+
+function checkDivergence() {
+  const banner = document.getElementById('diverge-banner');
+  if (!banner) return;
+  // T1 avg: average of all T1 signals with live pct data
+  const t1 = EXIT_SIGNALS.filter(s => s.tier === 1 && s.pct > 0);
+  const t3cf = EXIT_SIGNALS.find(s => s.id === 'ceasefire');
+  if (!t1.length || !t3cf) { banner.style.display = 'none'; return; }
+  const t1Avg = t1.reduce((sum, s) => sum + s.pct, 0) / t1.length;
+  if (t1Avg > 75 && t3cf.pct > 70) {
+    banner.style.display = '';
+    banner.className = 'diverge-banner';
+    banner.innerHTML = '⚠️ <strong>T1/T3 DIVERGENCE</strong> — Tier 1 (ground truth) avg ' + Math.round(t1Avg) + '% signals escalation, but Tier 3 ceasefire at ' + t3cf.pct + '% suggests de-escalation. <strong>Tier 3 is noise — T1 overrides.</strong>';
+  } else {
+    banner.style.display = 'none';
+  }
 }
 
 // ---- status pills ----
@@ -897,15 +1001,22 @@ function connectFinnhubWebSocket() {
 const PM_MARKETS=[
   {slug:'us-x-iran-ceasefire-by-december-31',     v:'pd',b:'bd'},
   {slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30',v:'ph',b:'bh'},
-  {slug:'trump-ends-iran-military-operations-by-june-30',v:null,b:null}
+  {slug:'trump-ends-iran-military-operations-by-june-30',v:null,b:null},
+  {slug:'will-iran-take-military-action-by-march-31',v:null,b:null},
+  {slug:'us-x-iran-ceasefire-by-march-31',v:null,b:null}
 ];
 function applyPMData(pmData) {
   PM_MARKETS.forEach(m => {
     const pct = pmData[m.slug];
     if (pct === undefined) return;
-    if(m.slug.includes('ceasefire')) liveData.ceasefire=pct;
+    if(m.slug.includes('ceasefire-by-december')) liveData.ceasefire=pct;
+    if(m.slug.includes('ceasefire-by-march')) liveData.mar31Ceasefire=pct;
     if(m.slug.includes('hormuz')) liveData.hormuz=pct;
     if(m.slug.includes('military-operations')) liveData.opsEnd=pct;
+    if(m.slug.includes('military-action')) {
+      const sig = EXIT_SIGNALS.find(s => s.id === 'military');
+      if (sig) sig.pct = pct;
+    }
     // update EXIT_SIGNALS with live data
     const sig = EXIT_SIGNALS.find(s => s.slug === m.slug);
     if (sig) sig.pct = pct;
@@ -959,7 +1070,7 @@ async function fPM(){
 }
 
 // ---- live data store for review ----
-let liveData = { ceasefire: null, opsEnd: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null };
+let liveData = { ceasefire: null, opsEnd: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null, vesselCount: null, dailyTransits: null, mar31Ceasefire: null };
 // restore liveData from cache on load
 try {
   const ld = localStorage.getItem('hc_liveData');
@@ -1009,36 +1120,59 @@ function updateReview() {
   s1 += '.';
   parts.push(s1);
 
-  // sentence 2: Deleveraging rule v2 — requires ALL THREE: oil -10%+, physical confirmation, PM Tier 1 shift
-  // SPR clock override: if SPR <10 days cover → NO trim regardless of price
+  // sentence 2: Deleveraging rule v3 — requires ALL THREE simultaneously:
+  // 1. Oil -10%+ intraday  2. Physical: vessels dropping OR transits >20  3. ops-end Jun 30 >=80% held 24h + Iran mil <70%
+  // SPR clock override: active through ~late April 2026 — NO trim regardless of price
   // Trump filter: oil drop on Trump verbal + Iran denial + vessel count flat = HOLD
+  // Ceasefire Dec 31 is CUMULATIVE (9-month) — NEVER a trim trigger on its own
   const oe = liveData.opsEnd;
-  const sprOverride = true; // SPR clock active ~through late April 2026; flip to false after SPR exhausted
-  if (oe !== null || hz !== null || cf !== null) {
+  const vessels = liveData.vesselCount || null;  // trapped vessel count
+  const transits = liveData.dailyTransits || null; // daily transits through strait
+  const sprStart = new Date('2026-03-19');
+  const sprDays = 27;
+  const sprExpiry = new Date(sprStart.getTime() + sprDays * 86400000);
+  const sprDaysLeft = Math.max(0, Math.ceil((sprExpiry - new Date()) / 86400000));
+  const sprActive = sprDaysLeft > 0;
+
+  if (oe !== null || hz !== null || cf !== null || vessels !== null) {
     let s2 = '';
-    if (sprOverride) {
-      // SPR clock override is active — suppress trim signals from price action
-      s2 = '<strong style="color:var(--success)">SPR clock override active</strong> (~through late April). Oil flush during SPR drawdown = market mispricing supply fix that isn\'t coming. ';
+
+    // check physical confirmation signals
+    const vesselsDropping = vessels !== null && vessels < 2000;
+    const transitsHigh = transits !== null && transits > 20;
+    const physicalConfirm = vesselsDropping || transitsHigh;
+
+    if (sprActive) {
+      s2 = '<strong style="color:var(--success)">SPR clock override active</strong> (' + sprDaysLeft + ' days left, expires ~Apr 15). Oil flush during SPR drawdown = market mispricing supply fix that isn\'t coming. ';
       if (oe !== null && oe >= 80) {
-        s2 += 'Ops-end Jun 30 at <strong class="up">' + oe + '%</strong> is above 80% trim threshold but <strong>SPR override blocks the trim</strong> — monitor for SPR expiry to re-enable. Vessels at 2,500 is the confirmation signal.';
+        s2 += 'Ops-end Jun 30 at <strong class="up">' + oe + '%</strong> is above 80% but <strong>SPR override blocks the trim</strong> — monitor for SPR expiry.';
       } else if (oe !== null && oe >= 70) {
         s2 += 'Ops-end Jun 30 at <strong class="wn">' + oe + '%</strong> approaching 80%. SPR override holds. <strong>No trim, but tighten stops for post-SPR period</strong>.';
       } else {
-        s2 += 'Ops-end Jun 30 at ' + (oe !== null ? oe + '%' : 'n/a') + ', Hormuz at ' + (hz !== null ? hz + '%' : 'n/a') + '. <strong>All clear — hold full size, no triggers breached</strong>.';
+        s2 += 'Ops-end ' + (oe !== null ? oe + '%' : 'n/a') + ', Hormuz ' + (hz !== null ? hz + '%' : 'n/a') + '. <strong>All clear — hold full size</strong>.';
       }
     } else if (oe !== null && oe >= 80) {
-      // Post-SPR: ops-end fired — but still needs physical confirmation + 24h hold
-      s2 = 'Ops-end Jun 30 at <strong class="up">' + oe + '%</strong> — above 80% threshold. Requires confirmation: vessel count dropping AND holds 24h AND Iran mil vs Israel <70%. <strong>If all 3 confirmed: trim 50% oil</strong>. If only PM signal without physical: HOLD.';
+      // Post-SPR: ops-end fired — needs physical confirmation + 24h hold
+      s2 = '⚠️ Ops-end Jun 30 at <strong class="dn">' + oe + '%</strong> — above 80% threshold. ';
+      if (physicalConfirm) {
+        s2 += (vesselsDropping ? 'Vessels at ' + vessels.toLocaleString() + ' (dropping). ' : 'Daily transits at ' + transits + ' (>20). ');
+        s2 += '<strong class="dn">TRIM TRIGGER MET — execute 50% oil trim</strong> (GUSH 200, USO 62, OILK 100).';
+      } else {
+        s2 += 'Requires confirmation: vessel count dropping below 2,000 AND holds 24h AND Iran mil vs Israel <70%. <strong>If all 3 confirmed: trim 50% oil</strong>. PM signal without physical = HOLD.';
+      }
+    } else if (vessels !== null && vessels < 1500) {
+      s2 = '🔴 Vessels at <strong class="dn">' + vessels.toLocaleString() + '</strong> — <strong>below 1,500 threshold, TRIM OIL</strong>. Strait physically reopening regardless of PM signals.';
+    } else if (transitsHigh) {
+      s2 = '🔴 Daily transits at <strong class="dn">' + transits + '</strong> (>20/day) — <strong>Hormuz physically reopening, TRIM OIL</strong>. Supply restoration in progress.';
     } else if (oe !== null && oe >= 70) {
-      s2 = 'Ops-end Jun 30 at <strong class="wn">' + oe + '%</strong> approaching 80% trim threshold. <strong>Prepare to cut ⅓ oil if it crosses 80% + vessel count confirms</strong>. Oil drop on Trump verbal + Iran denial + flat vessels = automatic HOLD.';
+      s2 = '⚠️ Ops-end Jun 30 at <strong class="wn">' + oe + '%</strong> approaching 80% trim threshold. <strong>Prepare trim orders</strong>. Oil drop on Trump verbal + Iran denial + flat vessels = automatic HOLD.';
     } else if (hz !== null && hz >= 60) {
-      s2 = 'Hormuz normalization at <strong class="wn">' + hz + '%</strong> — <strong>shipping recovery signal</strong>. Watch daily transits; >20/day confirms supply restoration. Still requires oil -10%+ and PM shift to trigger trim.';
-    } else if (hz !== null && hz <= 30 && (oe === null || oe < 70)) {
-      s2 = 'Hormuz at ' + hz + '%, ops-end ' + (oe !== null ? oe + '%' : 'n/a') + ' — <strong>disruption holds, thesis is +EV at full size</strong>. No trim triggers met (need all 3: oil -10%, physical confirmation, PM Tier 1 shift).';
-    } else if (cf !== null && cf >= 70) {
-      s2 = 'Dec 31 ceasefire at ' + cf + '% is <strong>cumulative</strong> — war ends sometime in 2026, not imminent. <strong>Focus on ops-end Jun 30 (' + (oe !== null ? oe + '%' : 'n/a') + ')</strong>. Ceasefire ≠ supply restoration (Goldman: elevated through 2027).';
+      s2 = 'Hormuz normalization at <strong class="wn">' + hz + '%</strong> — watch daily transits. Still requires all 3 (oil -10%, physical, PM shift) to trigger trim.';
     } else {
-      s2 = 'Ops-end ' + (oe !== null ? oe + '%' : 'n/a') + ', Hormuz ' + (hz !== null ? hz + '%' : 'n/a') + ', ceasefire ' + (cf !== null ? cf + '%' : 'n/a') + ' — <strong>no trim triggers breached, hold full size</strong>. v2 rule requires all 3 simultaneous: oil -10%, physical, PM shift.';
+      // Default: no triggers — show status summary
+      s2 = 'Ops-end ' + (oe !== null ? oe + '%' : 'n/a') + ', Hormuz ' + (hz !== null ? hz + '%' : 'n/a');
+      if (cf !== null) s2 += ', ceasefire Dec 31 ' + cf + '% <span style="color:var(--text3)">(9-month cumulative — not imminent)</span>';
+      s2 += ' — <strong>no trim triggers breached, hold full size</strong>. v3 rule requires all 3 simultaneous: oil -10%, physical, PM T1 shift.';
     }
     parts.push(s2);
   }
@@ -1213,6 +1347,9 @@ function applyHormuzData(data) {
       if (el) el.textContent = v.globalTonnageIdle + '%';
     }
     document.getElementById('vessel-src').textContent = '— live from hormuztracker.com';
+    // store in liveData for portfolio review
+    if (v.trapped) liveData.vesselCount = v.trapped;
+    if (v.transitsPerDay !== undefined) liveData.dailyTransits = parseFloat(v.transitsPerDay) || 0;
   }
 
   // Update pipeline data if scraped
@@ -1309,7 +1446,8 @@ async function fAISignal() {
         liveData: {
           btc: liveData.btc, wti: liveData.wti, gold: liveData.gold,
           ceasefire: liveData.ceasefire, opsEnd: liveData.opsEnd, hormuz: liveData.hormuz,
-          sprOverride: true // flip when SPR exhausted ~late April
+          mar31Ceasefire: liveData.mar31Ceasefire, militaryAction: liveData.militaryAction || null,
+          sprOverride: new Date() < new Date('2026-04-15')
         },
         passes: 2
       })
@@ -1327,6 +1465,91 @@ async function fAISignal() {
     }
   } catch(e) {
     setStatus('ai','err','AI Signal  | ' + e.message);
+  }
+}
+
+// ---- SPR clock ----
+function updateSPRClock() {
+  const el = document.getElementById('spr-clock');
+  if (!el) return;
+  const sprStart = new Date('2026-03-19');
+  const sprTotalDays = 27;
+  const now = new Date();
+  const elapsed = Math.max(0, (now - sprStart) / 86400000);
+  const remaining = Math.max(0, sprTotalDays - elapsed);
+  const pct = Math.min(100, (elapsed / sprTotalDays) * 100);
+  const expiry = new Date(sprStart.getTime() + sprTotalDays * 86400000);
+
+  document.getElementById('spr-fill').style.width = pct.toFixed(1) + '%';
+  const daysEl = document.getElementById('spr-days');
+  const statusEl = document.getElementById('spr-status');
+
+  if (remaining <= 0) {
+    daysEl.innerHTML = '<span class="dn">EXHAUSTED</span>';
+    statusEl.textContent = 'SPR depleted — structural re-acceleration';
+    el.className = 'spr-clock spr-crit';
+  } else if (remaining <= 5) {
+    daysEl.innerHTML = '<span class="dn">' + Math.ceil(remaining) + ' days left</span>';
+    statusEl.textContent = 'Day ' + Math.floor(elapsed) + ' of ~' + sprTotalDays + ' — expires ~Apr 15';
+    el.className = 'spr-clock spr-crit';
+  } else if (remaining <= 10) {
+    daysEl.innerHTML = '<span class="wn">' + Math.ceil(remaining) + ' days left</span>';
+    statusEl.textContent = 'Day ' + Math.floor(elapsed) + ' of ~' + sprTotalDays + ' — expires ~Apr 15';
+    el.className = 'spr-clock spr-warn';
+  } else {
+    daysEl.textContent = Math.ceil(remaining) + ' days left';
+    statusEl.textContent = 'Day ' + Math.floor(elapsed) + ' of ~' + sprTotalDays + ' — expires ~Apr 15';
+    el.className = 'spr-clock';
+  }
+}
+
+// ---- Mar 31 ceasefire tracker ----
+function updateMar31Tracker() {
+  const tracker = document.getElementById('mar31-tracker');
+  if (!tracker) return;
+  const pct = liveData.mar31Ceasefire;
+  if (pct === null || pct === undefined) { tracker.style.display = 'none'; return; }
+
+  tracker.style.display = '';
+  const deadline = new Date('2026-03-31');
+  const daysLeft = Math.max(0, Math.ceil((deadline - new Date()) / 86400000));
+
+  document.getElementById('mar31-pct').innerHTML = '<span class="' + (pct >= 50 ? 'dn' : pct >= 35 ? 'wn' : 'up') + '">' + pct + '%</span>';
+  document.getElementById('mar31-fill').style.width = pct + '%';
+  document.getElementById('mar31-fill').style.background = pct >= 50 ? 'var(--bg-danger)' : pct >= 40 ? 'var(--bg-warning)' : 'var(--bg-success)';
+  document.getElementById('mar31-countdown').textContent = daysLeft === 0 ? 'Resolves today' : daysLeft + ' days to resolution';
+
+  // 7-day delta from localStorage
+  const deltaKey = 'mar31_history';
+  let history = [];
+  try { history = JSON.parse(localStorage.getItem(deltaKey) || '[]'); } catch(_) {}
+  const today = new Date().toISOString().slice(0, 10);
+  if (!history.length || history[history.length - 1].d !== today) {
+    history.push({ d: today, p: pct });
+    if (history.length > 14) history = history.slice(-14);
+    localStorage.setItem(deltaKey, JSON.stringify(history));
+  }
+  const deltaEl = document.getElementById('mar31-delta');
+  if (history.length >= 2) {
+    const oldest = history[0].p;
+    const delta = pct - oldest;
+    deltaEl.innerHTML = (history.length - 1) + 'd trend: <span class="' + (delta > 0 ? 'dn' : 'up') + '">' + (delta >= 0 ? '+' : '') + delta + '%</span>';
+  }
+
+  // Alerts
+  const alertEl = document.getElementById('mar31-alert');
+  tracker.className = 'mar31';
+  if (pct >= 50) {
+    tracker.className = 'mar31 mar31-trim';
+    alertEl.innerHTML = '<div class="mar31-alert" style="background:#fee2e2;color:#991b1b">🔴 EXECUTE 50% OIL TRIM — ceasefire by Mar 31 at ' + pct + '%</div>';
+  } else if (pct >= 40) {
+    tracker.className = 'mar31 mar31-stage';
+    alertEl.innerHTML = '<div class="mar31-alert" style="background:#fef3c7;color:#854d0e">⚠️ Prepare trim orders — ceasefire probability staging at ' + pct + '%</div>';
+  } else if (pct >= 35) {
+    tracker.className = 'mar31 mar31-warn';
+    alertEl.innerHTML = '<div class="mar31-alert" style="background:#fef9c3;color:#854d0e">Watch: ceasefire probability rising — ' + pct + '% (warn threshold 35%)</div>';
+  } else {
+    alertEl.innerHTML = '';
   }
 }
 
@@ -1362,6 +1585,8 @@ async function go(){
   // persist liveData for fast next load
   try { localStorage.setItem('hc_liveData', JSON.stringify(liveData)); } catch(_) {}
   render(); // re-render with estimates + latest data
+  updateSPRClock();
+  updateMar31Tracker();
   updateReview();
 
   // AI signal: fire after data is populated (non-blocking — don't await)
@@ -1395,7 +1620,7 @@ function promptFinnhubKey() {
   }
 }
 
-renderExitSignals();renderTimeline(FALLBACK_TIMELINE);render();go();setInterval(go,60000);
+renderExitSignals();renderTimeline(FALLBACK_TIMELINE);render();updateSPRClock();go();setInterval(go,60000);
 </script>
 </body>
 </html>

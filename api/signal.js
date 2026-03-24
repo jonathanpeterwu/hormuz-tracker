@@ -43,9 +43,11 @@ LIVE MARKET DATA (as of ${new Date().toISOString()}):
 - BTC: ${liveData.btc || 'n/a'}
 - WTI (@107 perp): ${liveData.wti || 'n/a'}
 - Gold (via GLD): ${liveData.gold || 'n/a'}
-- Polymarket — Ceasefire Dec 31: ${liveData.ceasefire ?? 'n/a'}%
-- Polymarket — Ops-end Jun 30: ${liveData.opsEnd ?? 'n/a'}%
-- Polymarket — Hormuz normal Apr 30: ${liveData.hormuz ?? 'n/a'}%
+- T1: Military action Mar 31: ${liveData.militaryAction ?? 'n/a'}%
+- T1: Hormuz normal Apr 30: ${liveData.hormuz ?? 'n/a'}%
+- T2: Ops-end Jun 30: ${liveData.opsEnd ?? 'n/a'}% (trim trigger at 80%)
+- T3: Ceasefire Dec 31: ${liveData.ceasefire ?? 'n/a'}% (9-month cumulative — NOT imminent, low weight)
+- T3: Ceasefire Mar 31: ${liveData.mar31Ceasefire ?? 'n/a'}% (specific near-term — HIGH weight if >35%)
 - SPR override active: ${liveData.sprOverride !== false ? 'YES (through ~late April)' : 'NO (expired)'}
 
 POSITIONS:
@@ -99,9 +101,11 @@ CRITIQUE INSTRUCTIONS:
 1. Check each signal against the v3 rules. Are any signals WRONG?
 2. Is the SPR clock override being respected? (If active, oil sell signals should be suppressed)
 3. Is the Trump announcement filter being applied? (If oil dropped on verbal + Iran denial, sell should be suppressed)
-4. Is ceasefire being treated as cumulative (low weight) not imminent (high weight)?
-5. Are ops-end thresholds correct? (Only >80% triggers trim)
-6. Does forced liquidation require ALL conditions (oil+BTC+SOX -10% + VIX >40)?
+4. Is ceasefire Dec 31 treated as 9-month cumulative (LOW weight) not imminent? It should NEVER drive a trim.
+5. Is ceasefire Mar 31 (if >35%) given HIGH weight as a near-term specific outcome?
+6. Are T1 signals (military action, Hormuz, physical) given priority over T3 (ceasefire Dec 31)?
+7. Are ops-end thresholds correct? (Only ≥80% held 24h triggers trim, and requires physical confirmation)
+8. Does forced liquidation require ALL conditions (oil+BTC+SOX -10% + VIX >40)?
 
 Output the CORRECTED JSON array with updated buy/hold/sell values and reasoning that references your corrections.
 Respond with ONLY a JSON array, no other text.` }

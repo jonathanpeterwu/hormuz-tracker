@@ -33,7 +33,7 @@ export default async function handler(req, res) {
   let pmData = {};
 
   const positions = await getPositions();
-  const tickers = positions.filter(p => p.type !== 'option').map(p => p.ticker);
+  const tickers = [...positions.filter(p => p.type !== 'option').map(p => p.ticker), '^TNX', 'JPY=X'];
 
   const [yahooResult, hlResult, pmResult] = await Promise.allSettled([
     fetchYahooPrices(tickers, req),
@@ -65,7 +65,9 @@ export default async function handler(req, res) {
     hormuz: pmData.hormuz ?? null,
     mar31Ceasefire: pmData.mar31Ceasefire ?? null,
     militaryAction: pmData.militaryAction ?? null,
-    sprOverride: new Date() < new Date('2026-04-15'),
+    ust10y: yahooData['^TNX'] || null,
+    usdjpy: yahooData['JPY=X'] || null,
+    sprCeiling: { low: 110, high: 115 },
   };
 
   let signals = [];
@@ -210,7 +212,9 @@ LIVE MARKET DATA (as of ${new Date().toISOString()}):
 - T2: Ops-end Jun 30: ${liveData.opsEnd ?? 'n/a'}% (trim trigger at 80%)
 - T3: Ceasefire Dec 31: ${liveData.ceasefire ?? 'n/a'}% (9-month cumulative — NOT imminent, low weight)
 - T3: Ceasefire Mar 31: ${liveData.mar31Ceasefire ?? 'n/a'}% (specific near-term — HIGH weight if >35%)
-- SPR override active: ${liveData.sprOverride ? 'YES' : 'NO'}
+- 10Y UST yield: ${liveData.ust10y ?? 'n/a'}% (ADD TLT ≥4.60, SPIRAL ≥4.70)
+- USDJPY: ${liveData.usdjpy ?? 'n/a'} (STRESS if USDJPY×Oil >15,500)
+- SPR swap ceiling: $110-115 (Wright rolling structure, NOT depleting)
 
 POSITIONS:
 ${positions.map(p => `- ${p.ticker} (${p.label}): ${p.qty} shares @ $${p.avg}, last $${p.lastPrice || 'n/a'}`).join('\n')}
@@ -261,11 +265,14 @@ function getBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
-// Default positions (mirrors frontend defaults)
+// Default positions fallback (mirrors api/positions.js)
 const DEFAULT_POSITIONS = [
-  { ticker: 'GUSH', qty: 100, avg: 23.50, label: '3x Oil Bull', type: 'stock' },
-  { ticker: 'USO', qty: 200, avg: 68.00, label: 'Oil Fund', type: 'stock' },
-  { ticker: 'SQQQ', qty: 150, avg: 9.80, label: '3x Short QQQ', type: 'stock' },
-  { ticker: 'GLD', qty: 50, avg: 215.00, label: 'Gold', type: 'stock' },
-  { ticker: 'CF', qty: 100, avg: 78.00, label: 'CF Industries', type: 'stock' },
+  { ticker: 'GUSH', qty: 400, avg: 36.155, label: '2x oil E&P', type: 'stock' },
+  { ticker: 'USO', qty: 150, avg: 111.602, label: 'WTI crude', type: 'stock' },
+  { ticker: 'OILK', qty: 100, avg: 56.038, label: 'Roll-efficient oil', type: 'stock' },
+  { ticker: 'SQQQ', qty: 125, avg: 78.985, label: 'Short QQQ 3x', type: 'stock' },
+  { ticker: 'GLD', qty: 10, avg: 414.04, label: 'Gold ETF', type: 'stock' },
+  { ticker: 'CF', qty: 15, avg: 126.265, label: 'Nitrogen fertilizer', type: 'stock' },
+  { ticker: 'NTR', qty: 50, avg: 74.815, label: 'Diversified fertilizer', type: 'stock' },
+  { ticker: 'CANE', qty: 200, avg: 10.485, label: 'Sugar ETF', type: 'stock' },
 ];

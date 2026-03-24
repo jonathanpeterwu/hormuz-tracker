@@ -1,16 +1,19 @@
 const DEFAULT_POSITIONS = [
   { ticker: "GUSH", label: "2x oil E&P", type: "stock", bg: "bo", qty: 400, avg: 36.155, pnl: 2258 },
-  { ticker: "USO", label: "WTI crude", type: "stock", bg: "bo", qty: 125, avg: 111.602, pnl: 1016 },
-  { ticker: "OILK", label: "Roll-efficient oil", type: "stock", bg: "bo", qty: 200, avg: 56.038, pnl: 51 },
-  { ticker: "SQQQ", label: "Short QQQ 3x", type: "stock", bg: "bs", qty: 100, avg: 78.985, pnl: -51 },
+  { ticker: "USO", label: "WTI crude", type: "stock", bg: "bo", qty: 150, avg: 111.602, pnl: 1016 },
+  { ticker: "OILK", label: "Roll-efficient oil", type: "stock", bg: "bo", qty: 100, avg: 56.038, pnl: 51 },
+  { ticker: "SQQQ", label: "Short QQQ 3x", type: "stock", bg: "bs", qty: 125, avg: 78.985, pnl: -51 },
   { ticker: "GLD", label: "Gold ETF", type: "stock", bg: "bg2c", qty: 10, avg: 414.04, pnl: -13 },
   { ticker: "CF", label: "Nitrogen fertilizer", type: "stock", bg: "ba", qty: 15, avg: 126.265, pnl: -86 },
-  { ticker: "NTR", label: "Diversified fertilizer", type: "stock", bg: "ba", qty: 40, avg: 74.815, pnl: -32 },
+  { ticker: "NTR", label: "Diversified fertilizer", type: "stock", bg: "ba", qty: 50, avg: 74.815, pnl: -32 },
   { ticker: "CANE", label: "Sugar ETF", type: "stock", bg: "ba", qty: 200, avg: 10.485, pnl: 9 },
+  { ticker: "TLT Jun18 $84 Put", label: "Treasury short", type: "option", bg: "bp", qty: 2, avg: 1.50, pnl: 0 },
+  { ticker: "TLT Jun18 $83 Put", label: "Treasury short", type: "option", bg: "bp", qty: 2, avg: 1.22, pnl: 0 },
+  { ticker: "TLT Jun18 $82 Put", label: "Treasury short", type: "option", bg: "bp", qty: 2, avg: 0.97, pnl: 0 },
   { ticker: "JETS Jun18 $22 Put", label: "Airlines short", type: "option", bg: "bp", qty: 10, avg: 1.262, pnl: 41 },
   { ticker: "TSM Jan15'27 $185 Put", label: "Taiwan tail", type: "option", bg: "bp", qty: 1, avg: 6.331, pnl: 20 },
   { ticker: "TSM Jan15'27 $200 Put", label: "Taiwan delta", type: "option", bg: "bp", qty: 1, avg: 8.051, pnl: 34 },
-  { ticker: "EWY Jun18 $115 Put", label: "Korea short", type: "option", bg: "bp", qty: 1, avg: 8.30, pnl: 0 },
+  { ticker: "EWY Jun18 $100 Put", label: "Korea short", type: "option", bg: "bp", qty: 1, avg: 8.30, pnl: 0 },
 ];
 
 export default async function handler(req, res) {

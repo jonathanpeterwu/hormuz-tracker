@@ -147,6 +147,14 @@ button:hover{background:var(--bg2);color:var(--text)}
 @media(prefers-color-scheme:dark){.tier-t1{background:#450a0a;color:#fca5a5}.tier-t2{background:#451a03;color:#fcd34d}.tier-t3{background:#1e1b4b;color:#a5b4fc}}
 .tier-hdr{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:8px;margin-bottom:4px;padding-left:2px}
 .tier-hdr:first-child{margin-top:0}
+/* Daily indicators grid */
+.ind-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem}
+.ind-card{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:10px 12px}
+.ind-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.ind-val{font-size:18px;font-weight:500;line-height:1.2}
+.ind-detail{font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4}
+.ind-status{font-size:10px;font-weight:600;margin-top:3px;letter-spacing:.03em}
+@media(max-width:600px){.ind-grid{grid-template-columns:repeat(2,1fr)}}
 /* Divergence banner */
 .diverge-banner{background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--r);padding:10px 14px;margin-bottom:1.25rem;font-size:12px;color:#854d0e;line-height:1.5}
 @media(prefers-color-scheme:dark){.diverge-banner{background:#451a03;border-color:#d97706;color:#fcd34d}}
@@ -170,6 +178,16 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="review" id="review-box">
   <div class="review-label">Portfolio review</div>
   <div class="review-text" id="review-text">Waiting for live data...</div>
+</div>
+
+<div class="sl">Daily indicators <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)">— 6 morning checks</span></div>
+<div class="ind-grid" id="ind-grid">
+  <div class="ind-card"><div class="ind-label">10Y UST Yield</div><div class="ind-val" id="ind-ust">—</div><div class="ind-status" id="ind-ust-status"></div><div class="ind-detail">HOLD &lt;4.42 | ADD TLT ≥4.60 | SPIRAL ≥4.70</div></div>
+  <div class="ind-card"><div class="ind-label">USDJPY × Oil</div><div class="ind-val" id="ind-jpyoil">—</div><div class="ind-status" id="ind-jpyoil-status"></div><div class="ind-detail">STRESS &gt;15,500 | CRIT USDJPY &gt;155</div></div>
+  <div class="ind-card"><div class="ind-label">Oil vs Range</div><div class="ind-val" id="ind-oil">—</div><div class="ind-status" id="ind-oil-status"></div><div class="ind-detail">Floor $85-90 Nuttall | Ceil $110-115 Wright</div></div>
+  <div class="ind-card"><div class="ind-label">Vessel Transit</div><div class="ind-val" id="ind-vessel">—</div><div class="ind-status" id="ind-vessel-status"></div><div class="ind-detail">HOLD &lt;2 | WATCH 3-5 | TRIM PREP 10+ | TRIM 20+</div></div>
+  <div class="ind-card"><div class="ind-label">Mar 31 Ceasefire</div><div class="ind-val" id="ind-mar31">—</div><div class="ind-status" id="ind-mar31-status"></div><div class="ind-detail">$2.59M insider: NO Mar 31 + YES US forces Iran Apr 30</div></div>
+  <div class="ind-card"><div class="ind-label">Trump Psyop Filter</div><div class="ind-val" id="ind-trump">—</div><div class="ind-status" id="ind-trump-status"></div><div class="ind-detail">Fri/Sat escalation → Mon AM de-escalation</div></div>
 </div>
 
 <div class="sl">Headlines — Middle East &amp; oil <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="news-age"></span></div>
@@ -269,16 +287,16 @@ button:hover{background:var(--bg2);color:var(--text)}
   </div>
 </div>
 
-<!-- SPR Clock -->
+<!-- SPR Swap — Oil Price Cap -->
 <div class="spr-clock" id="spr-clock">
   <div class="spr-hdr">
-    <span class="spr-title">SPR Clock — 400M bbl emergency release</span>
+    <span class="spr-title">SPR Swap — Oil Price Cap (Wright rolling structure)</span>
     <span class="spr-days" id="spr-days">—</span>
   </div>
   <div class="spr-bar"><div class="spr-fill" id="spr-fill" style="width:0"></div></div>
   <div class="spr-detail">
-    <span id="spr-status">Started Mar 19 · ~27 days cover</span>
-    <span id="spr-gap">14.7M bbl/day uncovered</span>
+    <span id="spr-status">$85 Nuttall floor · $110-115 Wright ceiling</span>
+    <span id="spr-gap" style="color:var(--text3)">Rolling swap, NOT depleting</span>
   </div>
 </div>
 
@@ -295,8 +313,19 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div class="tr2"><div class="ttn" style="color:var(--danger)">→</div><div class="ttt"><strong>On trigger (all 3 + no vetoes):</strong> TRIM 50% OIL — GUSH sell 200, USO sell 62, OILK sell 100.</div></div>
   <div class="tr2"><div class="ttn">4</div><div class="ttt"><strong>Forced liquidation:</strong> oil + BTC + SOX all -10%+ same session + VIX >40 → trim 30% only, 25% cash, wait 72h. Cascade ≠ thesis death.</div></div>
   <div class="tr2"><div class="ttn">5</div><div class="ttt">GUSH +40–50% from entry → aggressive trim zone. BNO $65–68 trim ⅓ · $75–80 trim ⅓ · USO $138–142 trim ⅓.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--success)">⛽</div><div class="ttt"><strong>SPR clock override:</strong> SPR ~27 days cover from Mar 19. While active → NO oil trim. Oil flush during SPR drawdown = market mispricing supply fix that isn't coming.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--text3)">—</div><div class="ttt"><strong>Trump filter (auto-veto):</strong> drop on Trump verbal + Iran denies 24h + vessel count unchanged + T1 markets unchanged = HOLD regardless. Dec 31 ceasefire is 9-month cumulative, NOT imminent.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--success)">⛽</div><div class="ttt"><strong>SPR swap ceiling:</strong> Wright rolling swap at $110-115. NOT a depleting reserve, no expiry date. Does NOT block trim signals. Oil above $115 = swap pressure forcing supply response.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--text3)">—</div><div class="ttt"><strong>Trump psyop filter:</strong> Fri/Sat escalation tweets → Mon AM de-escalation (pattern confirmed). Mon oil drop + Iran denial + flat vessels + T1 unchanged = HOLD regardless. Dec 31 ceasefire is 9-month cumulative, NOT imminent.</div></div>
+</div>
+
+<div class="div"></div>
+<div class="sl">Key catalysts</div>
+<div class="tb" style="border-left-color:var(--info)">
+  <div class="tr2"><div class="ttn" style="color:var(--danger)">Mar 25</div><div class="ttt">Trump 5-day window expires. Watch for deal OR renewed threats by EOD.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--warning)">Mar 28-29</div><div class="ttt">Next psyop escalation window (weekend). Fri/Sat tweets → Mon de-escalation pattern.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--danger)">Mar 31</div><div class="ttt">Ceasefire market resolves. Insider wallets ($2.59M) collect or lose. Same entity betting NO Mar 31 + YES US forces in Iran Apr 30.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--text3)">Apr 15</div><div class="ttt">Earnings season begins. Q1 airline results (JETS catalyst). 10Y at 4.70% if +9.5bp/week pace holds.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--text3)">Late Apr</div><div class="ttt">Insider bet: US forces in Iran by Apr 30. May CPI data window opens.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--info)">May 13</div><div class="ttt">CPI release — SQQQ + TLT put catalyst. Bear steepening = TLT declining, rising yields = multiple compression.</div></div>
 </div>
 
 <div class="ft">
@@ -375,17 +404,20 @@ let FINNHUB_KEY = localStorage.getItem('finnhub_key') || 'd70nlihr01ql6rnvvff0d7
 // ---- POSITIONS JSON ---- default positions, overridden by localStorage if present
 const DEFAULT_POSITIONS=[
   {ticker:"GUSH",label:"2x oil E&P",type:"stock",bg:"bo",qty:400,avg:36.155,pnl:2258},
-  {ticker:"USO",label:"WTI crude",type:"stock",bg:"bo",qty:125,avg:111.602,pnl:1016},
-  {ticker:"OILK",label:"Roll-efficient oil",type:"stock",bg:"bo",qty:200,avg:56.038,pnl:51},
-  {ticker:"SQQQ",label:"Short QQQ 3x",type:"stock",bg:"bs",qty:100,avg:78.985,pnl:-51},
+  {ticker:"USO",label:"WTI crude",type:"stock",bg:"bo",qty:150,avg:111.602,pnl:1016},
+  {ticker:"OILK",label:"Roll-efficient oil",type:"stock",bg:"bo",qty:100,avg:56.038,pnl:51},
+  {ticker:"SQQQ",label:"Short QQQ 3x",type:"stock",bg:"bs",qty:125,avg:78.985,pnl:-51},
   {ticker:"GLD",label:"Gold ETF",type:"stock",bg:"bg2c",qty:10,avg:414.04,pnl:-13,hl:"XAU"},
   {ticker:"CF",label:"Nitrogen fertilizer",type:"stock",bg:"ba",qty:15,avg:126.265,pnl:-86},
-  {ticker:"NTR",label:"Diversified fertilizer",type:"stock",bg:"ba",qty:40,avg:74.815,pnl:-32},
+  {ticker:"NTR",label:"Diversified fertilizer",type:"stock",bg:"ba",qty:50,avg:74.815,pnl:-32},
   {ticker:"CANE",label:"Sugar ETF",type:"stock",bg:"ba",qty:200,avg:10.485,pnl:9},
+  {ticker:"TLT Jun18 $84 Put",label:"Treasury short",type:"option",bg:"bp",qty:2,avg:1.50,pnl:0},
+  {ticker:"TLT Jun18 $83 Put",label:"Treasury short",type:"option",bg:"bp",qty:2,avg:1.22,pnl:0},
+  {ticker:"TLT Jun18 $82 Put",label:"Treasury short",type:"option",bg:"bp",qty:2,avg:0.97,pnl:0},
   {ticker:"JETS Jun18 $22 Put",label:"Airlines short",type:"option",bg:"bp",qty:10,avg:1.262,pnl:41},
   {ticker:"TSM Jan15'27 $185 Put",label:"Taiwan tail",type:"option",bg:"bp",qty:1,avg:6.331,pnl:20},
   {ticker:"TSM Jan15'27 $200 Put",label:"Taiwan delta",type:"option",bg:"bp",qty:1,avg:8.051,pnl:34},
-  {ticker:"EWY Jun18 $115 Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:8.30,pnl:0}
+  {ticker:"EWY Jun18 $100 Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:8.30,pnl:0}
 ];
 
 // ---- HL proxy map: stock ticker → { hlCoin, beta } ----
@@ -758,6 +790,8 @@ function render(){
 // Positions with an hl field use Hyperliquid for perp pricing (not Yahoo).
 function applyYahooResults(results) {
   results.forEach(q => {
+    if (q.symbol === '^TNX') { liveData.ust10y = q.regularMarketPrice; return; }
+    if (q.symbol === 'JPY=X') { liveData.usdjpy = q.regularMarketPrice; return; }
     pos.forEach(p => {
       const sym = p.yahooTicker || p.ticker;
       if (sym === q.symbol) { p.lastPrice = q.regularMarketPrice; }
@@ -767,7 +801,7 @@ function applyYahooResults(results) {
 async function fYahoo(){
   setStatus('yf','pending','Yahoo...');
   const equities = pos.filter(p => p.type !== 'option' && !/\s/.test(p.ticker));
-  const symbols  = [...new Set(equities.map(p => p.yahooTicker || p.ticker))];
+  const symbols  = [...new Set(equities.map(p => p.yahooTicker || p.ticker)), '^TNX', 'JPY=X'];
   if (!symbols.length) { setStatus('yf','err','No equity tickers'); return false; }
   // restore from cache immediately
   const cached = cacheGet('yf');
@@ -1070,7 +1104,7 @@ async function fPM(){
 }
 
 // ---- live data store for review ----
-let liveData = { ceasefire: null, opsEnd: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null, vesselCount: null, dailyTransits: null, mar31Ceasefire: null };
+let liveData = { ceasefire: null, opsEnd: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null, vesselCount: null, dailyTransits: null, mar31Ceasefire: null, ust10y: null, usdjpy: null };
 // restore liveData from cache on load
 try {
   const ld = localStorage.getItem('hc_liveData');
@@ -1122,58 +1156,46 @@ function updateReview() {
 
   // sentence 2: Deleveraging rule v3 — requires ALL THREE simultaneously:
   // 1. Oil -10%+ intraday  2. Physical: vessels dropping OR transits >20  3. ops-end Jun 30 >=80% held 24h + Iran mil <70%
-  // SPR clock override: active through ~late April 2026 — NO trim regardless of price
+  // SPR swap ceiling at $110-115 (Wright rolling structure, NOT depleting, does NOT block trims)
   // Trump filter: oil drop on Trump verbal + Iran denial + vessel count flat = HOLD
   // Ceasefire Dec 31 is CUMULATIVE (9-month) — NEVER a trim trigger on its own
   const oe = liveData.opsEnd;
-  const vessels = liveData.vesselCount || null;  // trapped vessel count
-  const transits = liveData.dailyTransits || null; // daily transits through strait
-  const sprStart = new Date('2026-03-19');
-  const sprDays = 27;
-  const sprExpiry = new Date(sprStart.getTime() + sprDays * 86400000);
-  const sprDaysLeft = Math.max(0, Math.ceil((sprExpiry - new Date()) / 86400000));
-  const sprActive = sprDaysLeft > 0;
+  const vessels = liveData.vesselCount || null;
+  const transits = liveData.dailyTransits || null;
+  const wtiPrice = liveData.wti ? parseFloat(liveData.wti) : null;
 
   if (oe !== null || hz !== null || cf !== null || vessels !== null) {
     let s2 = '';
 
-    // check physical confirmation signals
     const vesselsDropping = vessels !== null && vessels < 2000;
     const transitsHigh = transits !== null && transits > 20;
     const physicalConfirm = vesselsDropping || transitsHigh;
 
-    if (sprActive) {
-      s2 = '<strong style="color:var(--success)">SPR clock override active</strong> (' + sprDaysLeft + ' days left, expires ~Apr 15). Oil flush during SPR drawdown = market mispricing supply fix that isn\'t coming. ';
-      if (oe !== null && oe >= 80) {
-        s2 += 'Ops-end Jun 30 at <strong class="up">' + oe + '%</strong> is above 80% but <strong>SPR override blocks the trim</strong> — monitor for SPR expiry.';
-      } else if (oe !== null && oe >= 70) {
-        s2 += 'Ops-end Jun 30 at <strong class="wn">' + oe + '%</strong> approaching 80%. SPR override holds. <strong>No trim, but tighten stops for post-SPR period</strong>.';
-      } else {
-        s2 += 'Ops-end ' + (oe !== null ? oe + '%' : 'n/a') + ', Hormuz ' + (hz !== null ? hz + '%' : 'n/a') + '. <strong>All clear — hold full size</strong>.';
-      }
-    } else if (oe !== null && oe >= 80) {
-      // Post-SPR: ops-end fired — needs physical confirmation + 24h hold
+    // SPR swap context (informational, does NOT block trims)
+    const sprNote = wtiPrice && wtiPrice >= 110 ? ' SPR swap ceiling pressure at $110-115.' : '';
+
+    if (oe !== null && oe >= 80) {
       s2 = '⚠️ Ops-end Jun 30 at <strong class="dn">' + oe + '%</strong> — above 80% threshold. ';
       if (physicalConfirm) {
         s2 += (vesselsDropping ? 'Vessels at ' + vessels.toLocaleString() + ' (dropping). ' : 'Daily transits at ' + transits + ' (>20). ');
-        s2 += '<strong class="dn">TRIM TRIGGER MET — execute 50% oil trim</strong> (GUSH 200, USO 62, OILK 100).';
+        s2 += '<strong class="dn">TRIM TRIGGER MET — execute 50% oil trim</strong> (GUSH 200, USO 75, OILK 50).';
       } else {
         s2 += 'Requires confirmation: vessel count dropping below 2,000 AND holds 24h AND Iran mil vs Israel <70%. <strong>If all 3 confirmed: trim 50% oil</strong>. PM signal without physical = HOLD.';
       }
     } else if (vessels !== null && vessels < 1500) {
-      s2 = '🔴 Vessels at <strong class="dn">' + vessels.toLocaleString() + '</strong> — <strong>below 1,500 threshold, TRIM OIL</strong>. Strait physically reopening regardless of PM signals.';
+      s2 = '🔴 Vessels at <strong class="dn">' + vessels.toLocaleString() + '</strong> — <strong>below 1,500 threshold, TRIM OIL</strong>. Strait physically reopening.';
     } else if (transitsHigh) {
-      s2 = '🔴 Daily transits at <strong class="dn">' + transits + '</strong> (>20/day) — <strong>Hormuz physically reopening, TRIM OIL</strong>. Supply restoration in progress.';
+      s2 = '🔴 Daily transits at <strong class="dn">' + transits + '</strong> (>20/day) — <strong>Hormuz physically reopening, TRIM OIL</strong>.';
     } else if (oe !== null && oe >= 70) {
-      s2 = '⚠️ Ops-end Jun 30 at <strong class="wn">' + oe + '%</strong> approaching 80% trim threshold. <strong>Prepare trim orders</strong>. Oil drop on Trump verbal + Iran denial + flat vessels = automatic HOLD.';
+      s2 = '⚠️ Ops-end Jun 30 at <strong class="wn">' + oe + '%</strong> approaching 80% trim threshold. <strong>Prepare trim orders</strong>. Trump verbal + Iran denial + flat vessels = automatic HOLD.';
     } else if (hz !== null && hz >= 60) {
-      s2 = 'Hormuz normalization at <strong class="wn">' + hz + '%</strong> — watch daily transits. Still requires all 3 (oil -10%, physical, PM shift) to trigger trim.';
+      s2 = 'Hormuz normalization at <strong class="wn">' + hz + '%</strong> — watch daily transits. Still requires all 3 to trigger trim.';
     } else {
-      // Default: no triggers — show status summary
       s2 = 'Ops-end ' + (oe !== null ? oe + '%' : 'n/a') + ', Hormuz ' + (hz !== null ? hz + '%' : 'n/a');
       if (cf !== null) s2 += ', ceasefire Dec 31 ' + cf + '% <span style="color:var(--text3)">(9-month cumulative — not imminent)</span>';
-      s2 += ' — <strong>no trim triggers breached, hold full size</strong>. v3 rule requires all 3 simultaneous: oil -10%, physical, PM T1 shift.';
+      s2 += ' — <strong>no trim triggers breached, hold full size</strong>. Oil range: $85 Nuttall floor / $110-115 Wright ceiling.';
     }
+    if (sprNote) s2 += sprNote;
     parts.push(s2);
   }
 
@@ -1447,7 +1469,8 @@ async function fAISignal() {
           btc: liveData.btc, wti: liveData.wti, gold: liveData.gold,
           ceasefire: liveData.ceasefire, opsEnd: liveData.opsEnd, hormuz: liveData.hormuz,
           mar31Ceasefire: liveData.mar31Ceasefire, militaryAction: liveData.militaryAction || null,
-          sprOverride: new Date() < new Date('2026-04-15')
+          ust10y: liveData.ust10y, usdjpy: liveData.usdjpy,
+          sprCeiling: { low: 110, high: 115 }
         },
         passes: 2
       })
@@ -1472,34 +1495,127 @@ async function fAISignal() {
 function updateSPRClock() {
   const el = document.getElementById('spr-clock');
   if (!el) return;
-  const sprStart = new Date('2026-03-19');
-  const sprTotalDays = 27;
-  const now = new Date();
-  const elapsed = Math.max(0, (now - sprStart) / 86400000);
-  const remaining = Math.max(0, sprTotalDays - elapsed);
-  const pct = Math.min(100, (elapsed / sprTotalDays) * 100);
-  const expiry = new Date(sprStart.getTime() + sprTotalDays * 86400000);
-
-  document.getElementById('spr-fill').style.width = pct.toFixed(1) + '%';
+  const wti = liveData.wti ? parseFloat(liveData.wti) : null;
   const daysEl = document.getElementById('spr-days');
-  const statusEl = document.getElementById('spr-status');
+  const fillEl = document.getElementById('spr-fill');
 
-  if (remaining <= 0) {
-    daysEl.innerHTML = '<span class="dn">EXHAUSTED</span>';
-    statusEl.textContent = 'SPR depleted — structural re-acceleration';
-    el.className = 'spr-clock spr-crit';
-  } else if (remaining <= 5) {
-    daysEl.innerHTML = '<span class="dn">' + Math.ceil(remaining) + ' days left</span>';
-    statusEl.textContent = 'Day ' + Math.floor(elapsed) + ' of ~' + sprTotalDays + ' — expires ~Apr 15';
-    el.className = 'spr-clock spr-crit';
-  } else if (remaining <= 10) {
-    daysEl.innerHTML = '<span class="wn">' + Math.ceil(remaining) + ' days left</span>';
-    statusEl.textContent = 'Day ' + Math.floor(elapsed) + ' of ~' + sprTotalDays + ' — expires ~Apr 15';
-    el.className = 'spr-clock spr-warn';
-  } else {
-    daysEl.textContent = Math.ceil(remaining) + ' days left';
-    statusEl.textContent = 'Day ' + Math.floor(elapsed) + ' of ~' + sprTotalDays + ' — expires ~Apr 15';
+  if (!wti) {
+    daysEl.textContent = 'WTI: —';
+    fillEl.style.width = '0';
     el.className = 'spr-clock';
+    return;
+  }
+
+  // Range: $85 Nuttall floor to $115 Wright ceiling
+  const floor = 85, capLow = 110, capHigh = 115;
+  const pct = Math.min(100, Math.max(0, ((wti - floor) / (capHigh - floor)) * 100));
+  fillEl.style.width = pct.toFixed(1) + '%';
+
+  if (wti >= capHigh) {
+    daysEl.innerHTML = '<span class="dn">$' + wti.toFixed(0) + ' — ABOVE CAP</span>';
+    fillEl.style.background = 'var(--bg-danger)';
+    el.className = 'spr-clock spr-crit';
+  } else if (wti >= capLow) {
+    daysEl.innerHTML = '<span class="wn">$' + wti.toFixed(0) + ' — at cap range</span>';
+    fillEl.style.background = 'var(--bg-warning)';
+    el.className = 'spr-clock spr-warn';
+  } else if (wti >= 100) {
+    daysEl.innerHTML = '<span class="wn">$' + wti.toFixed(0) + ' — approaching cap</span>';
+    fillEl.style.background = 'var(--bg-warning)';
+    el.className = 'spr-clock';
+  } else if (wti <= floor) {
+    daysEl.innerHTML = '<span class="dn">$' + wti.toFixed(0) + ' — at/below floor</span>';
+    fillEl.style.background = 'var(--bg-danger)';
+    el.className = 'spr-clock spr-crit';
+  } else {
+    daysEl.innerHTML = '$' + wti.toFixed(0) + ' — mid-range';
+    fillEl.style.background = 'var(--bg-success)';
+    el.className = 'spr-clock';
+  }
+}
+
+// ---- daily indicators ----
+function updateIndicators() {
+  // 1. 10Y UST Yield
+  const ust = liveData.ust10y;
+  const ustEl = document.getElementById('ind-ust');
+  const ustSt = document.getElementById('ind-ust-status');
+  if (ustEl && ust !== null) {
+    ustEl.innerHTML = '<span class="' + (ust >= 4.70 ? 'dn' : ust >= 4.60 ? 'wn' : 'up') + '">' + ust.toFixed(2) + '%</span>';
+    if (ustSt) ustSt.innerHTML = ust >= 4.70 ? '<span class="dn">SPIRAL</span>' : ust >= 4.60 ? '<span class="wn">ADD TLT</span>' : '<span class="up">HOLD</span>';
+  }
+
+  // 2. USDJPY × Oil
+  const jpy = liveData.usdjpy;
+  const wti = liveData.wti ? parseFloat(liveData.wti) : null;
+  const jpyEl = document.getElementById('ind-jpyoil');
+  const jpySt = document.getElementById('ind-jpyoil-status');
+  if (jpyEl && jpy !== null && wti !== null) {
+    const composite = Math.round(jpy * wti);
+    jpyEl.innerHTML = '<span class="' + (jpy > 155 ? 'dn' : composite > 15500 ? 'wn' : '') + '">' + composite.toLocaleString() + '</span>';
+    if (jpySt) {
+      const jpyNote = 'JPY ' + jpy.toFixed(1) + ' × WTI $' + wti.toFixed(0);
+      jpySt.innerHTML = jpy > 155 ? '<span class="dn">CRITICAL — ' + jpyNote + '</span>' : composite > 15500 ? '<span class="wn">STRESS — ' + jpyNote + '</span>' : '<span style="color:var(--text3)">' + jpyNote + '</span>';
+    }
+  } else if (jpyEl && jpy !== null) {
+    jpyEl.textContent = 'JPY ' + jpy.toFixed(1);
+  }
+
+  // 3. Oil vs Range ($85 Nuttall floor / $110-115 Wright ceiling)
+  const oilEl = document.getElementById('ind-oil');
+  const oilSt = document.getElementById('ind-oil-status');
+  if (oilEl && wti !== null) {
+    const cls = wti >= 110 ? 'wn' : wti <= 90 ? 'dn' : 'up';
+    oilEl.innerHTML = '<span class="' + cls + '">$' + wti.toFixed(1) + '</span>';
+    if (oilSt) {
+      if (wti >= 115) oilSt.innerHTML = '<span class="dn">ABOVE CEILING</span>';
+      else if (wti >= 110) oilSt.innerHTML = '<span class="wn">AT CAP RANGE</span>';
+      else if (wti <= 85) oilSt.innerHTML = '<span class="dn">AT/BELOW FLOOR</span>';
+      else if (wti <= 90) oilSt.innerHTML = '<span class="wn">NEAR FLOOR</span>';
+      else oilSt.innerHTML = '<span class="up">MID-RANGE</span>';
+    }
+  }
+
+  // 4. Vessel Transit
+  const transit = liveData.dailyTransits;
+  const vEl = document.getElementById('ind-vessel');
+  const vSt = document.getElementById('ind-vessel-status');
+  if (vEl && transit !== null) {
+    vEl.textContent = transit + '/day';
+    if (vSt) {
+      if (transit >= 20) vSt.innerHTML = '<span class="dn">TRIM</span>';
+      else if (transit >= 10) vSt.innerHTML = '<span class="wn">TRIM PREP</span>';
+      else if (transit >= 3) vSt.innerHTML = '<span class="wn">WATCH</span>';
+      else vSt.innerHTML = '<span class="up">HOLD</span>';
+    }
+  }
+
+  // 5. Mar 31 Ceasefire
+  const mar31 = liveData.mar31Ceasefire;
+  const m31El = document.getElementById('ind-mar31');
+  const m31St = document.getElementById('ind-mar31-status');
+  if (m31El && mar31 !== null) {
+    m31El.innerHTML = '<span class="' + (mar31 >= 50 ? 'dn' : mar31 >= 35 ? 'wn' : 'up') + '">' + mar31 + '%</span>';
+    if (m31St) {
+      if (mar31 >= 50) m31St.innerHTML = '<span class="dn">TRIM 50% OIL</span>';
+      else if (mar31 >= 40) m31St.innerHTML = '<span class="wn">STAGE — prep orders</span>';
+      else if (mar31 >= 35) m31St.innerHTML = '<span class="wn">FLAG</span>';
+      else m31St.innerHTML = '<span class="up">LOW</span>';
+    }
+  }
+
+  // 6. Trump Psyop Filter — day-of-week awareness
+  const tEl = document.getElementById('ind-trump');
+  const tSt = document.getElementById('ind-trump-status');
+  if (tEl) {
+    const dow = new Date().getDay(); // 0=Sun 1=Mon ... 6=Sat
+    const dayNames = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    tEl.textContent = dayNames[dow];
+    if (tSt) {
+      if (dow === 5 || dow === 6) tSt.innerHTML = '<span class="wn">ESCALATION WINDOW</span>';
+      else if (dow === 1) tSt.innerHTML = '<span class="wn">DE-ESCALATION — filter drops</span>';
+      else tSt.innerHTML = '<span style="color:var(--text3)">Normal trading</span>';
+    }
   }
 }
 
@@ -1584,7 +1700,8 @@ async function go(){
 
   // persist liveData for fast next load
   try { localStorage.setItem('hc_liveData', JSON.stringify(liveData)); } catch(_) {}
-  render(); // re-render with estimates + latest data
+  render();
+  updateIndicators();
   updateSPRClock();
   updateMar31Tracker();
   updateReview();

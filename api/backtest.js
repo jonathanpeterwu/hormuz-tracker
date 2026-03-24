@@ -23,7 +23,13 @@ export default async function handler(req, res) {
   const versionFilter = req.query.rulesVersion || null;
 
   try {
-    // 1. Get snapshot index
+    if (!process.env.KV_REST_API_URL) {
+      return res.status(200).json({
+        snapshots: [],
+        summary: { total: 0, message: 'Vercel KV not configured. Link a KV store in your Vercel project settings.' },
+      });
+    }
+
     const index = await kv.lrange('signal_snap_index', 0, limit + 50) || [];
     if (!index.length) {
       return res.status(200).json({

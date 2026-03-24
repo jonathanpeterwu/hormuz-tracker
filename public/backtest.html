@@ -194,7 +194,8 @@ function render() {
     document.getElementById('sc-avg-ret').textContent = '—';
     document.getElementById('sc-weighted').textContent = '—';
     document.getElementById('sc-confidence').textContent = '—';
-    document.getElementById('history-table').innerHTML = '<div class="empty"><div class="empty-icon">&#128202;</div>No signal history yet.<br>Cron runs daily, or click "Run snapshot now" to start.</div>';
+    const msg = s?.message || 'No signal history yet.<br>Cron runs daily, or click "Run snapshot now" to start.';
+    document.getElementById('history-table').innerHTML = `<div class="empty"><div class="empty-icon">&#128202;</div>${msg}</div>`;
     return;
   }
 

@@ -22,6 +22,7 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+  if (!process.env.KV_REST_API_URL) return res.status(500).json({ error: 'Vercel KV not configured. Link a KV store in your Vercel project settings.' });
 
   const ts = new Date().toISOString();
   const errors = [];

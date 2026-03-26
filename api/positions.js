@@ -1,19 +1,15 @@
 const DEFAULT_POSITIONS = [
-  { ticker: "GUSH", label: "2x oil E&P", type: "stock", bg: "bo", qty: 400, avg: 36.155, pnl: 2258 },
-  { ticker: "USO", label: "WTI crude", type: "stock", bg: "bo", qty: 150, avg: 111.602, pnl: 1016 },
-  { ticker: "OILK", label: "Roll-efficient oil", type: "stock", bg: "bo", qty: 100, avg: 56.038, pnl: 51 },
-  { ticker: "SQQQ", label: "Short QQQ 3x", type: "stock", bg: "bs", qty: 125, avg: 78.985, pnl: -51 },
-  { ticker: "GLD", label: "Gold ETF", type: "stock", bg: "bg2c", qty: 10, avg: 414.04, pnl: -13 },
-  { ticker: "CF", label: "Nitrogen fertilizer", type: "stock", bg: "ba", qty: 15, avg: 126.265, pnl: -86 },
-  { ticker: "NTR", label: "Diversified fertilizer", type: "stock", bg: "ba", qty: 50, avg: 74.815, pnl: -32 },
-  { ticker: "CANE", label: "Sugar ETF", type: "stock", bg: "ba", qty: 200, avg: 10.485, pnl: 9 },
-  { ticker: "TLT Jun18 $84 Put", label: "Treasury short", type: "option", bg: "bp", qty: 2, avg: 1.50, pnl: 0 },
-  { ticker: "TLT Jun18 $83 Put", label: "Treasury short", type: "option", bg: "bp", qty: 2, avg: 1.22, pnl: 0 },
-  { ticker: "TLT Jun18 $82 Put", label: "Treasury short", type: "option", bg: "bp", qty: 2, avg: 0.97, pnl: 0 },
-  { ticker: "JETS Jun18 $22 Put", label: "Airlines short", type: "option", bg: "bp", qty: 10, avg: 1.262, pnl: 41 },
-  { ticker: "TSM Jan15'27 $185 Put", label: "Taiwan tail", type: "option", bg: "bp", qty: 1, avg: 6.331, pnl: 20 },
-  { ticker: "TSM Jan15'27 $200 Put", label: "Taiwan delta", type: "option", bg: "bp", qty: 1, avg: 8.051, pnl: 34 },
-  { ticker: "EWY Jun18 $100 Put", label: "Korea short", type: "option", bg: "bp", qty: 1, avg: 8.30, pnl: 0 },
+  { ticker: "GUSH", label: "2x oil E&P", type: "stock", bg: "bo", qty: 400, avg: 36.155, lastPrice: 46.03 },
+  { ticker: "USO", label: "WTI crude", type: "stock", bg: "bo", qty: 125, avg: 111.602, lastPrice: 117.26 },
+  { ticker: "OILK", label: "Roll-efficient oil", type: "stock", bg: "bo", qty: 200, avg: 56.038, lastPrice: 55.14 },
+  { ticker: "SQQQ", label: "Short QQQ 3x", type: "stock", bg: "bs", qty: 100, avg: 78.985, lastPrice: 82.50 },
+  { ticker: "NTR", label: "Diversified fert.", type: "stock", bg: "ba", qty: 40, avg: 74.815, lastPrice: 73.69 },
+  { ticker: "CANE", label: "Sugar ETF", type: "stock", bg: "ba", qty: 200, avg: 10.485, lastPrice: 10.63 },
+  { ticker: "TLT Jun18 $84 Put", label: "Bonds short", type: "option", bg: "bp", qty: 2, avg: 0, pnl: 5.68 },
+  { ticker: "EWY Jun18 $100 Put", label: "Korea short", type: "option", bg: "bp", qty: 1, avg: 0, pnl: -41.21 },
+  { ticker: "TSM Jan15'27 $185 Put", label: "Taiwan tail", type: "option", bg: "bp", qty: 1, avg: 6.331, pnl: -48.59 },
+  { ticker: "TSM Jan15'27 $200 Put", label: "Taiwan delta", type: "option", bg: "bp", qty: 1, avg: 8.051, pnl: -52.79 },
+  { ticker: "JETS Jun18 $22 Put", label: "Airlines short", type: "option", bg: "bp", qty: 10, avg: 1.262, pnl: -318.45 },
 ];
 
 export default async function handler(req, res) {
@@ -22,14 +18,17 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  // Compute summary stats
+  // Compute summary stats — PnL is live for stocks (lastPrice - avg) * qty, static for options
   let totalCost = 0;
   let totalPnl = 0;
   const positions = DEFAULT_POSITIONS.map(p => {
     const cost = p.qty * p.avg;
     totalCost += cost;
-    totalPnl += p.pnl || 0;
-    return { ...p, costBasis: Math.round(cost * 100) / 100 };
+    const pnl = (p.type === 'stock' && p.lastPrice)
+      ? Math.round((p.lastPrice - p.avg) * p.qty * 100) / 100
+      : (p.pnl || 0);
+    totalPnl += pnl;
+    return { ...p, pnl, costBasis: Math.round(cost * 100) / 100 };
   });
 
   const summary = {

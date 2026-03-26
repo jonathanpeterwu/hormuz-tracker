@@ -403,21 +403,17 @@ let FINNHUB_KEY = localStorage.getItem('finnhub_key') || 'd70nlihr01ql6rnvvff0d7
 
 // ---- POSITIONS JSON ---- default positions, overridden by localStorage if present
 const DEFAULT_POSITIONS=[
-  {ticker:"GUSH",label:"2x oil E&P",type:"stock",bg:"bo",qty:400,avg:36.155,pnl:2258},
-  {ticker:"USO",label:"WTI crude",type:"stock",bg:"bo",qty:150,avg:111.602,pnl:1016},
-  {ticker:"OILK",label:"Roll-efficient oil",type:"stock",bg:"bo",qty:100,avg:56.038,pnl:51},
-  {ticker:"SQQQ",label:"Short QQQ 3x",type:"stock",bg:"bs",qty:125,avg:78.985,pnl:-51},
-  {ticker:"GLD",label:"Gold ETF",type:"stock",bg:"bg2c",qty:10,avg:414.04,pnl:-13,hl:"XAU"},
-  {ticker:"CF",label:"Nitrogen fertilizer",type:"stock",bg:"ba",qty:15,avg:126.265,pnl:-86},
-  {ticker:"NTR",label:"Diversified fertilizer",type:"stock",bg:"ba",qty:50,avg:74.815,pnl:-32},
-  {ticker:"CANE",label:"Sugar ETF",type:"stock",bg:"ba",qty:200,avg:10.485,pnl:9},
-  {ticker:"TLT Jun18 $84 Put",label:"Treasury short",type:"option",bg:"bp",qty:2,avg:1.50,pnl:0},
-  {ticker:"TLT Jun18 $83 Put",label:"Treasury short",type:"option",bg:"bp",qty:2,avg:1.22,pnl:0},
-  {ticker:"TLT Jun18 $82 Put",label:"Treasury short",type:"option",bg:"bp",qty:2,avg:0.97,pnl:0},
-  {ticker:"JETS Jun18 $22 Put",label:"Airlines short",type:"option",bg:"bp",qty:10,avg:1.262,pnl:41},
-  {ticker:"TSM Jan15'27 $185 Put",label:"Taiwan tail",type:"option",bg:"bp",qty:1,avg:6.331,pnl:20},
-  {ticker:"TSM Jan15'27 $200 Put",label:"Taiwan delta",type:"option",bg:"bp",qty:1,avg:8.051,pnl:34},
-  {ticker:"EWY Jun18 $100 Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:8.30,pnl:0}
+  {ticker:"GUSH",label:"2x oil E&P",type:"stock",bg:"bo",qty:400,avg:36.155,lastPrice:46.03},
+  {ticker:"USO",label:"WTI crude",type:"stock",bg:"bo",qty:125,avg:111.602,lastPrice:117.26},
+  {ticker:"OILK",label:"Roll-efficient oil",type:"stock",bg:"bo",qty:200,avg:56.038,lastPrice:55.14},
+  {ticker:"SQQQ",label:"Short QQQ 3x",type:"stock",bg:"bs",qty:100,avg:78.985,lastPrice:82.50},
+  {ticker:"NTR",label:"Diversified fert.",type:"stock",bg:"ba",qty:40,avg:74.815,lastPrice:73.69},
+  {ticker:"CANE",label:"Sugar ETF",type:"stock",bg:"ba",qty:200,avg:10.485,lastPrice:10.63},
+  {ticker:"TLT Jun18 $84 Put",label:"Bonds short",type:"option",bg:"bp",qty:2,avg:0,pnl:5.68},
+  {ticker:"EWY Jun18 $100 Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:0,pnl:-41.21},
+  {ticker:"TSM Jan15'27 $185 Put",label:"Taiwan tail",type:"option",bg:"bp",qty:1,avg:6.331,pnl:-48.59},
+  {ticker:"TSM Jan15'27 $200 Put",label:"Taiwan delta",type:"option",bg:"bp",qty:1,avg:8.051,pnl:-52.79},
+  {ticker:"JETS Jun18 $22 Put",label:"Airlines short",type:"option",bg:"bp",qty:10,avg:1.262,pnl:-318.45}
 ];
 
 // ---- HL proxy map: stock ticker → { hlCoin, beta } ----
@@ -429,8 +425,6 @@ const HL_PROXY = {
   USO:   { coin: '@107', beta: 1.0 },   // WTI crude tracker
   OILK:  { coin: '@107', beta: 0.95 },  // roll-efficient oil ~1:1
   SQQQ:  { coin: 'ETH',  beta: -1.2 },  // -3x QQQ, ETH proxy for risk (inverted, dampened)
-  GLD:   { coin: 'XAU',  beta: 0.25 },  // GLD ~25% of spot gold moves (it's 1/10 oz)
-  CF:    { coin: '@107', beta: 0.5 },   // fertilizer correlates loosely with energy
   NTR:   { coin: '@107', beta: 0.4 },   // diversified ag, lower oil beta
   CANE:  { coin: '@107', beta: 0.15 },  // sugar has weak energy correlation
 };
@@ -751,8 +745,10 @@ function render(){
   if (thEst) thEst.textContent = closed ? (mktState === 'weekend' ? 'Wknd est.' : 'O/N est.') : 'Est.';
 
   pos.forEach(p=>{
-    tot+=parseFloat(p.pnl)||0;
-    const pnl=fp(p.pnl);
+    // Compute PnL live for stocks, use static pnl for options
+    const livePnl = (p.type==='stock' && p.lastPrice) ? Math.round((p.lastPrice-p.avg)*p.qty*100)/100 : (parseFloat(p.pnl)||0);
+    tot+=livePnl;
+    const pnl=fp(livePnl);
     const lp=p.lastPrice ? f(p.lastPrice) : (p.type==='option' ? '<span style="color:var(--text3)">'+f(p.avg)+'</span>' : '<span class="sh">—</span>');
     const sig=computeSignal(p);
     const aiSig=aiSignals[p.ticker] || null;
@@ -1119,7 +1115,8 @@ function updateReview() {
   // compute total P&L and cost basis for % return
   let totalPnl = 0, totalCost = 0;
   pos.forEach(p => {
-    totalPnl += parseFloat(p.pnl) || 0;
+    const pnl = (p.type==='stock' && p.lastPrice) ? (p.lastPrice-p.avg)*p.qty : (parseFloat(p.pnl)||0);
+    totalPnl += pnl;
     totalCost += p.qty * p.avg;
   });
   const pnlPct = totalCost > 0 ? ((totalPnl / totalCost) * 100).toFixed(1) : '0';
@@ -1463,7 +1460,7 @@ async function fAISignal() {
       body: JSON.stringify({
         positions: pos.map(p => ({
           ticker: p.ticker, label: p.label, type: p.type, bg: p.bg,
-          qty: p.qty, avg: p.avg, pnl: p.pnl, lastPrice: p.lastPrice || null
+          qty: p.qty, avg: p.avg, pnl: (p.type==='stock'&&p.lastPrice)?Math.round((p.lastPrice-p.avg)*p.qty*100)/100:(p.pnl||0), lastPrice: p.lastPrice || null
         })),
         liveData: {
           btc: liveData.btc, wti: liveData.wti, gold: liveData.gold,

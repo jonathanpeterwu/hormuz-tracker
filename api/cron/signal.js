@@ -268,11 +268,14 @@ function getBaseUrl(req) {
 // Default positions fallback (mirrors api/positions.js)
 const DEFAULT_POSITIONS = [
   { ticker: 'GUSH', qty: 400, avg: 36.155, label: '2x oil E&P', type: 'stock' },
-  { ticker: 'USO', qty: 150, avg: 111.602, label: 'WTI crude', type: 'stock' },
-  { ticker: 'OILK', qty: 100, avg: 56.038, label: 'Roll-efficient oil', type: 'stock' },
-  { ticker: 'SQQQ', qty: 125, avg: 78.985, label: 'Short QQQ 3x', type: 'stock' },
-  { ticker: 'GLD', qty: 10, avg: 414.04, label: 'Gold ETF', type: 'stock' },
-  { ticker: 'CF', qty: 15, avg: 126.265, label: 'Nitrogen fertilizer', type: 'stock' },
-  { ticker: 'NTR', qty: 50, avg: 74.815, label: 'Diversified fertilizer', type: 'stock' },
+  { ticker: 'USO', qty: 125, avg: 111.602, label: 'WTI crude', type: 'stock' },
+  { ticker: 'OILK', qty: 200, avg: 56.038, label: 'Roll-efficient oil', type: 'stock' },
+  { ticker: 'SQQQ', qty: 100, avg: 78.985, label: 'Short QQQ 3x', type: 'stock' },
+  { ticker: 'NTR', qty: 40, avg: 74.815, label: 'Diversified fert.', type: 'stock' },
   { ticker: 'CANE', qty: 200, avg: 10.485, label: 'Sugar ETF', type: 'stock' },
+  { ticker: 'TLT Jun18 $84 Put', qty: 2, avg: 0, label: 'Bonds short', type: 'option' },
+  { ticker: 'EWY Jun18 $100 Put', qty: 1, avg: 0, label: 'Korea short', type: 'option' },
+  { ticker: "TSM Jan15'27 $185 Put", qty: 1, avg: 6.331, label: 'Taiwan tail', type: 'option' },
+  { ticker: "TSM Jan15'27 $200 Put", qty: 1, avg: 8.051, label: 'Taiwan delta', type: 'option' },
+  { ticker: 'JETS Jun18 $22 Put', qty: 10, avg: 1.262, label: 'Airlines short', type: 'option' },
 ];

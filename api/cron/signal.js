@@ -198,23 +198,26 @@ async function generateSignals(apiKey, positions, liveData) {
     const { fileURLToPath } = await import('node:url');
     const { dirname, join } = await import('node:path');
     const dir = dirname(fileURLToPath(import.meta.url));
-    rules = readFileSync(join(dir, '../../rules/v3.md'), 'utf-8');
-    rulesVersion = 'v3';
+    rules = readFileSync(join(dir, '../../rules/v3.1.md'), 'utf-8');
+    rulesVersion = 'v3.1';
   }
 
   const context = `
 LIVE MARKET DATA (as of ${new Date().toISOString()}):
 - BTC: ${liveData.btc || 'n/a'}
 - WTI (@107 perp): ${liveData.wti || 'n/a'}
-- Gold (via GLD): ${liveData.gold || 'n/a'}
-- T1: Military action Mar 31: ${liveData.militaryAction ?? 'n/a'}%
-- T1: Hormuz normal Apr 30: ${liveData.hormuz ?? 'n/a'}%
+- Gold: ${liveData.gold || 'n/a'}
+- T1: Military action Mar 31: ${liveData.militaryAction ?? 'n/a'}% | Iran mil vs Israel: 100%
+- T1: Hormuz normal Apr 15: ${liveData.hormuz ?? 'n/a'}% (sell FRO if >40%)
+- T2: Ceasefire Apr 7: ${liveData.mar31Ceasefire ?? 'n/a'}% (FLAG 40% | STAGE 50% | TRIM 60%)
 - T2: Ops-end Jun 30: ${liveData.opsEnd ?? 'n/a'}% (trim trigger at 80%)
-- T3: Ceasefire Dec 31: ${liveData.ceasefire ?? 'n/a'}% (9-month cumulative — NOT imminent, low weight)
-- T3: Ceasefire Mar 31: ${liveData.mar31Ceasefire ?? 'n/a'}% (specific near-term — HIGH weight if >35%)
-- 10Y UST yield: ${liveData.ust10y ?? 'n/a'}% (ADD TLT ≥4.60, SPIRAL ≥4.70)
+- T2: US forces enter Iran Apr 30: rising — smart money YES
+- T3: Ceasefire Dec 31: ${liveData.ceasefire ?? 'n/a'}% (9-month cumulative — NEVER trim on this)
+- 10Y UST yield: ${liveData.ust10y ?? 'n/a'}% (ADD TLT ≥4.60, SPIRAL ≥4.70, 20Y hit 5.00%)
 - USDJPY: ${liveData.usdjpy ?? 'n/a'} (STRESS if USDJPY×Oil >15,500)
 - SPR swap ceiling: $110-115 (Wright rolling structure, NOT depleting)
+- Apr 6 deadline: Trump energy pause expires 8pm ET
+- IRGC navy commander Tangsiri killed Mar 26
 
 POSITIONS:
 ${positions.map(p => `- ${p.ticker} (${p.label}): ${p.qty} shares @ $${p.avg}, last $${p.lastPrice || 'n/a'}`).join('\n')}

@@ -158,7 +158,14 @@ button:hover{background:var(--bg2);color:var(--text)}
 /* Divergence banner */
 .diverge-banner{background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--r);padding:10px 14px;margin-bottom:1.25rem;font-size:12px;color:#854d0e;line-height:1.5}
 @media(prefers-color-scheme:dark){.diverge-banner{background:#451a03;border-color:#d97706;color:#fcd34d}}
-@media(max-width:600px){.mets,.pg,.vg{grid-template-columns:repeat(2,1fr)}}
+/* Main tabs */
+.main-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.25rem}
+.main-tab{font-size:13px;padding:10px 18px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;transition:color .15s}
+.main-tab:hover{color:var(--text2)}
+.main-tab.active{color:var(--text);border-bottom-color:var(--bg-info)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+@media(max-width:600px){.mets,.pg,.vg{grid-template-columns:repeat(2,1fr)}.main-tab{padding:8px 12px;font-size:12px}}
 </style>
 </head>
 <body>
@@ -167,6 +174,17 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div><div class="ht">Hormuz war room</div><div class="hs" id="sl">Loading...</div></div>
   <div><div class="lb"><div class="dot"></div>Live 24/7</div><div class="ts" id="ts" style="text-align:right;margin-top:4px">—</div></div>
 </div>
+
+<!-- Tab navigation -->
+<div class="main-tabs">
+  <div class="main-tab active" onclick="switchMainTab('home')">Portfolio</div>
+  <div class="main-tab" onclick="switchMainTab('signals')">Signals</div>
+  <div class="main-tab" onclick="switchMainTab('news')">News</div>
+  <div class="main-tab" onclick="switchMainTab('markets')">Markets</div>
+</div>
+
+<!-- ═══ HOME TAB ═══ -->
+<div class="tab-panel active" id="tab-home">
 
 <div class="mets">
   <div class="mc"><div class="mcl">Net liquidation</div><div class="mcv" id="m0">$37,745</div></div>
@@ -183,17 +201,13 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="sl">Daily indicators <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)">— 6 morning checks</span></div>
 <div class="ind-grid" id="ind-grid">
   <div class="ind-card"><div class="ind-label">10Y UST Yield</div><div class="ind-val" id="ind-ust">—</div><div class="ind-status" id="ind-ust-status"></div><div class="ind-detail">HOLD &lt;4.42 | ADD TLT ≥4.60 | SPIRAL ≥4.70</div></div>
-  <div class="ind-card"><div class="ind-label">USDJPY × Oil</div><div class="ind-val" id="ind-jpyoil">—</div><div class="ind-status" id="ind-jpyoil-status"></div><div class="ind-detail">STRESS &gt;15,500 | CRIT USDJPY &gt;155</div></div>
+  <div class="ind-card"><div class="ind-label">USDJPY × Brent</div><div class="ind-val" id="ind-jpyoil">—</div><div class="ind-status" id="ind-jpyoil-status"></div><div class="ind-detail">STRESS &gt;15,500 | CRIT &gt;155 · Japan doom loop ACTIVE</div></div>
   <div class="ind-card"><div class="ind-label">Oil vs Range</div><div class="ind-val" id="ind-oil">—</div><div class="ind-status" id="ind-oil-status"></div><div class="ind-detail">Floor $85-90 Nuttall | Ceil $110-115 Wright</div></div>
-  <div class="ind-card"><div class="ind-label">Vessel Transit</div><div class="ind-val" id="ind-vessel">—</div><div class="ind-status" id="ind-vessel-status"></div><div class="ind-detail">HOLD &lt;2 | WATCH 3-5 | TRIM PREP 10+ | TRIM 20+</div></div>
-  <div class="ind-card"><div class="ind-label">Mar 31 Ceasefire</div><div class="ind-val" id="ind-mar31">—</div><div class="ind-status" id="ind-mar31-status"></div><div class="ind-detail">$2.59M insider: NO Mar 31 + YES US forces Iran Apr 30</div></div>
-  <div class="ind-card"><div class="ind-label">Trump Psyop Filter</div><div class="ind-val" id="ind-trump">—</div><div class="ind-status" id="ind-trump-status"></div><div class="ind-detail">Fri/Sat escalation → Mon AM de-escalation</div></div>
+  <div class="ind-card"><div class="ind-label">Vessel Transit</div><div class="ind-val" id="ind-vessel">—</div><div class="ind-status" id="ind-vessel-status"></div><div class="ind-detail">HOLD &lt;10 | WATCH 10-19 | TRIM PREP 20+ (sustained 3d)</div></div>
+  <div class="ind-card"><div class="ind-label">Apr 7 Ceasefire</div><div class="ind-val" id="ind-mar31">—</div><div class="ind-status" id="ind-mar31-status"></div><div class="ind-detail">FLAG 40% | STAGE 50% | TRIM 60% · $2M insider cluster</div></div>
+  <div class="ind-card"><div class="ind-label">DB Pressure + TACO</div><div class="ind-val" id="ind-trump">—</div><div class="ind-status" id="ind-trump-status"></div><div class="ind-detail">RECORD HIGH = psyop filter MAX · Declining = real deal</div></div>
 </div>
 
-<div class="sl">Headlines — Middle East &amp; oil <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="news-age"></span></div>
-<div class="news-list" id="news-list"><div style="font-size:12px;color:var(--text3)">Loading headlines...</div></div>
-
-<div class="div"></div>
 <div class="sl">Positions</div>
 <table>
   <thead><tr>
@@ -205,7 +219,11 @@ button:hover{background:var(--bg2);color:var(--text)}
   <tbody id="pb"></tbody>
 </table>
 
-<div class="div"></div>
+</div><!-- /tab-home -->
+
+<!-- ═══ SIGNALS TAB ═══ -->
+<div class="tab-panel" id="tab-signals">
+
 <div class="sl">Polymarket — exit signals <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)">(tiered by signal quality)</span></div>
 <div id="diverge-banner" style="display:none"></div>
 <div class="pml" id="pm-list"></div>
@@ -213,14 +231,14 @@ button:hover{background:var(--bg2);color:var(--text)}
 <!-- Mar 31 ceasefire tracker -->
 <div class="mar31" id="mar31-tracker" style="display:none;margin-top:10px">
   <div class="mar31-hdr">
-    <span class="mar31-title">Ceasefire by Mar 31 — specific outcome tracker</span>
+    <span class="mar31-title">Ceasefire by Apr 7 — specific outcome tracker</span>
     <span class="mar31-pct" id="mar31-pct">—</span>
   </div>
   <div class="mar31-bar">
     <div class="mar31-fill" id="mar31-fill" style="width:0;background:var(--bg-success)"></div>
-    <div class="mar31-thresh" style="left:35%" title="35% — watch"></div>
-    <div class="mar31-thresh" style="left:40%" title="40% — prepare trim"></div>
-    <div class="mar31-thresh" style="left:50%" title="50% — execute trim"></div>
+    <div class="mar31-thresh" style="left:40%" title="40% — yellow flag"></div>
+    <div class="mar31-thresh" style="left:50%" title="50% — prepare trim"></div>
+    <div class="mar31-thresh" style="left:60%" title="60% — execute trim"></div>
   </div>
   <div class="mar31-detail">
     <span id="mar31-countdown">—</span>
@@ -230,6 +248,49 @@ button:hover{background:var(--bg2);color:var(--text)}
 </div>
 
 <div class="div"></div>
+<div class="sl">Exit triggers — v3.2 rules (all 3 required simultaneously)</div>
+<div class="tb">
+  <div class="tr2"><div class="ttn">1</div><div class="ttt"><strong>Oil -10%+ intraday</strong> (raised threshold filters Trump noise). NOT -5% on a Trump post.</div></div>
+  <div class="tr2"><div class="ttn">2</div><div class="ttt"><strong>Physical confirmation:</strong> non-Iranian transits >20 SUSTAINED 3+ DAYS (single-day spikes = AIS spoofing noise) OR Hormuz normalization Apr 15 PM crosses 40%.</div></div>
+  <div class="tr2"><div class="ttn">3</div><div class="ttt"><strong>Ops-end Jun 30 ≥80%</strong> held 24h AND Iran mil vs Israel <70%. Primary PM trim trigger.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--danger)">→</div><div class="ttt"><strong>On trigger (all 3 + no vetoes):</strong> TRIM 50% OIL — GUSH sell 125 (trading), USO sell 50, OILK sell 25. HSA GUSH follows Apr 6 deadline only.</div></div>
+  <div class="tr2"><div class="ttn">4</div><div class="ttt"><strong>Forced liquidation:</strong> oil + BTC + SOX all -10%+ same session + VIX >40 → trim 30% only, 25% cash, wait 72h. Cascade ≠ thesis death.</div></div>
+  <div class="tr2"><div class="ttn">5</div><div class="ttt">GUSH +40–50% from entry → aggressive trim zone. USO $138–142 trim ⅓. FRO: hold for June dividend, sell only if Hormuz norm Apr 15 >40%.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--success)">⛽</div><div class="ttt"><strong>SPR swap ceiling:</strong> Wright rolling swap at $110-115. NOT a depleting reserve. Does NOT block trim signals.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--text3)">—</div><div class="ttt"><strong>Trump psyop filter:</strong> Apr 6 pause extension fits pattern exactly. Fri/Sat escalation → Mon de-escalation. Filter active.</div></div>
+</div>
+
+<div class="div"></div>
+<div class="sl">Forcing function calendar (v3.2)</div>
+<div class="tb" style="border-left-color:var(--info)">
+  <div class="tr2"><div class="ttn" style="color:var(--danger)">Apr 6</div><div class="ttt"><strong>Trump energy pause expires 8pm ET.</strong> Most likely: another extension. Iran 5 conditions include Hormuz sovereignty = US nonstarter. Vance/Islamabad talks format under discussion.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--warning)">Apr 1-6</div><div class="ttt">@PolymarketHistory daily — insider wallet clusters appear 2-3 days before Trump announcements (confirmed x3). EARLIEST WARNING SIGNAL.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--warning)">Apr 7</div><div class="ttt">Ceasefire PM resolves. $2M insider cluster: NO ceasefire + YES US forces Iran Apr 30. Thresholds: 40% flag · 50% stage · 60% TRIM.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--info)">Apr 27</div><div class="ttt"><strong>NPT Review Conference</strong> opens NYC (runs Apr 27–May 22). Iran nuclear leverage peaks at UN. NPT exit threat = ADD oil.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--danger)">Apr 28</div><div class="ttt"><strong>BOJ policy meeting</strong> — 25bp hike to 1% priced in. Japan doom loop accelerant. ADD TLT puts if 10Y ≥4.60%.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--danger)">Apr 30</div><div class="ttt">Smart money bet: US forces enter Iran. HSA GUSH→FRO rotation deadline. Primary next-leg escalation thesis.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--warning)">~May 1-7</div><div class="ttt"><strong>REAL DEAL WINDOW</strong> — Trump needs Hormuz resolved before Beijing. Yuan toll booth compounds China leverage daily. PM "ceasefire before Trump-Xi": 59%.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--danger)">May 14-15</div><div class="ttt"><strong>Trump-Xi Beijing Summit.</strong> Originally Mar 31, delayed for Iran war. Walking in with Hormuz closed = weakness. China = 90% of Iran oil exports.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--text3)">Jun</div><div class="ttt">FRO ex-dividend (~$1.03/sh). Tanker rates stay elevated 4-8 weeks post-deal (mine clearance + yuan settlement). Do NOT sell on ceasefire.</div></div>
+</div>
+
+</div><!-- /tab-signals -->
+
+<!-- ═══ NEWS TAB ═══ -->
+<div class="tab-panel" id="tab-news">
+
+<div class="sl">Headlines — Middle East &amp; oil <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="news-age"></span></div>
+<div class="news-list" id="news-list"><div style="font-size:12px;color:var(--text3)">Loading headlines...</div></div>
+
+<div class="div"></div>
+<div class="sl">Disruption timeline <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="tl-label">— from hormuztracker.com</span></div>
+<div class="tl-list" id="tl-list"><div style="font-size:12px;color:var(--text3)">Loading timeline...</div></div>
+
+</div><!-- /tab-news -->
+
+<!-- ═══ MARKETS TAB ═══ -->
+<div class="tab-panel" id="tab-markets">
+
 <div class="sl">Hyperliquid perps — 24/7 pricing</div>
 <div class="pg">
   <div class="pc"><div class="pl2">BTC</div><div class="pp sh" id="pbtc">—</div><div class="hl-deltas" id="dbtc"></div></div>
@@ -300,33 +361,7 @@ button:hover{background:var(--bg2);color:var(--text)}
   </div>
 </div>
 
-<div class="div"></div>
-<div class="sl">Disruption timeline <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="tl-label">— from hormuztracker.com</span></div>
-<div class="tl-list" id="tl-list"><div style="font-size:12px;color:var(--text3)">Loading timeline...</div></div>
-
-<div class="div"></div>
-<div class="sl">Exit triggers — v3 rules (all 3 required simultaneously)</div>
-<div class="tb">
-  <div class="tr2"><div class="ttn">1</div><div class="ttt"><strong>Oil -10%+ intraday</strong> (was 5%, raised to filter Trump noise). NOT -5% on a Trump post.</div></div>
-  <div class="tr2"><div class="ttn">2</div><div class="ttt"><strong>Physical confirmation:</strong> vessel count dropping (2,500 → 2,000 watch · → 1,500 trim · → 1,000 exit) OR daily transits >20.</div></div>
-  <div class="tr2"><div class="ttn">3</div><div class="ttt"><strong>Ops-end Jun 30 ≥80%</strong> held 24h AND Iran mil vs Israel <70%. Primary PM trim trigger.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--danger)">→</div><div class="ttt"><strong>On trigger (all 3 + no vetoes):</strong> TRIM 50% OIL — GUSH sell 200, USO sell 62, OILK sell 100.</div></div>
-  <div class="tr2"><div class="ttn">4</div><div class="ttt"><strong>Forced liquidation:</strong> oil + BTC + SOX all -10%+ same session + VIX >40 → trim 30% only, 25% cash, wait 72h. Cascade ≠ thesis death.</div></div>
-  <div class="tr2"><div class="ttn">5</div><div class="ttt">GUSH +40–50% from entry → aggressive trim zone. BNO $65–68 trim ⅓ · $75–80 trim ⅓ · USO $138–142 trim ⅓.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--success)">⛽</div><div class="ttt"><strong>SPR swap ceiling:</strong> Wright rolling swap at $110-115. NOT a depleting reserve, no expiry date. Does NOT block trim signals. Oil above $115 = swap pressure forcing supply response.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--text3)">—</div><div class="ttt"><strong>Trump psyop filter:</strong> Fri/Sat escalation tweets → Mon AM de-escalation (pattern confirmed). Mon oil drop + Iran denial + flat vessels + T1 unchanged = HOLD regardless. Dec 31 ceasefire is 9-month cumulative, NOT imminent.</div></div>
-</div>
-
-<div class="div"></div>
-<div class="sl">Key catalysts</div>
-<div class="tb" style="border-left-color:var(--info)">
-  <div class="tr2"><div class="ttn" style="color:var(--danger)">Mar 25</div><div class="ttt">Trump 5-day window expires. Watch for deal OR renewed threats by EOD.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--warning)">Mar 28-29</div><div class="ttt">Next psyop escalation window (weekend). Fri/Sat tweets → Mon de-escalation pattern.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--danger)">Mar 31</div><div class="ttt">Ceasefire market resolves. Insider wallets ($2.59M) collect or lose. Same entity betting NO Mar 31 + YES US forces in Iran Apr 30.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--text3)">Apr 15</div><div class="ttt">Earnings season begins. Q1 airline results (JETS catalyst). 10Y at 4.70% if +9.5bp/week pace holds.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--text3)">Late Apr</div><div class="ttt">Insider bet: US forces in Iran by Apr 30. May CPI data window opens.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--info)">May 13</div><div class="ttt">CPI release — SQQQ + TLT put catalyst. Bear steepening = TLT declining, rising yields = multiple compression.</div></div>
-</div>
+</div><!-- /tab-markets -->
 
 <div class="ft">
   <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -549,14 +584,19 @@ function computeEstimates(mids) {
 // ---- exit signals (Polymarket) — tiered by signal quality ----
 const EXIT_SIGNALS = [
   // TIER 1 — GROUND TRUTH (weight: HIGH, unmanipulable physical signals)
-  { id:'military', tier:1, label:'Military action through Mar 31', deadline:'2026-03-31', slug:'will-iran-take-military-action-by-march-31', color:'var(--bg-danger)', pctClass:'dn', pct:90, impact:'high', action:'Watch if <70% — thesis weakening' },
-  { id:'hormuz', tier:1, label:'Hormuz normal by end of April', deadline:'2026-04-30', slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30', color:'var(--bg-warning)', pctClass:'wn', pct:27, impact:'high', action:'If >60% trim oil' },
-  { id:'ships', tier:1, label:'20+ ships transit Hormuz in March', deadline:'2026-03-31', slug:null, color:'var(--bg-info)', pctClass:'inf', pct:35, impact:'medium', action:'Watch vessel counts' },
-  { id:'crude100', tier:1, label:'Crude hits $100 by end of March', deadline:'2026-03-31', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:89, impact:'medium', action:'Take profit on USO/OILK' },
+  { id:'military', tier:1, label:'Military action Mar 31', deadline:'2026-03-31', slug:'will-iran-take-military-action-by-march-31', color:'var(--bg-danger)', pctClass:'dn', pct:87, impact:'high', action:'Watch if <70% — thesis weakening' },
+  { id:'iranmil', tier:1, label:'Iran mil vs Israel', deadline:'2026-12-31', slug:null, color:'var(--bg-danger)', pctClass:'dn', pct:100, impact:'high', action:'100% — active conflict confirmed' },
+  { id:'hormuz', tier:1, label:'Hormuz normal by Apr 15', deadline:'2026-04-15', slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30', color:'var(--bg-warning)', pctClass:'wn', pct:25, impact:'high', action:'If >40% sell FRO, trim oil' },
+  { id:'ships', tier:1, label:'20+ non-Iranian ships sustained 3d', deadline:'2026-04-30', slug:null, color:'var(--bg-info)', pctClass:'inf', pct:15, impact:'high', action:'Single-day spikes = AIS noise' },
   // TIER 2 — STRUCTURAL (weight: MEDIUM)
-  { id:'opsend', tier:2, label:'Trump ops-end Jun 30', deadline:'2026-06-30', slug:'trump-ends-iran-military-operations-by-june-30', color:'var(--bg-danger)', pctClass:'dn', pct:75, impact:'high', action:'Trim trigger at 80% + physical confirm' },
+  { id:'ceasefire_apr7', tier:2, label:'Ceasefire by Apr 7', deadline:'2026-04-07', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:33, impact:'high', action:'FLAG 40% | STAGE 50% | TRIM 60%' },
+  { id:'opsend', tier:2, label:'Ops-end Jun 30', deadline:'2026-06-30', slug:'trump-ends-iran-military-operations-by-june-30', color:'var(--bg-danger)', pctClass:'dn', pct:78, impact:'high', action:'Trim trigger at 80% + physical confirm' },
+  { id:'regime', tier:2, label:'Iran regime falls Apr 30', deadline:'2026-04-30', slug:null, color:'var(--bg-info)', pctClass:'inf', pct:9, impact:'medium', action:'Low prob, high impact if rises' },
+  { id:'usforces', tier:2, label:'US forces enter Iran Apr 30', deadline:'2026-04-30', slug:null, color:'var(--bg-danger)', pctClass:'dn', pct:15, impact:'high', action:'Smart money YES — next-leg thesis' },
+  { id:'ceasefire_xi', tier:2, label:'Ceasefire before Trump-Xi', deadline:'2026-05-14', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:59, impact:'high', action:'KEY SIGNAL — confirms May deal window' },
   // TIER 3 — NOISE / TRUMP BETA (weight: LOW, discounted)
-  { id:'ceasefire', tier:3, label:'Ceasefire by Dec 31', deadline:'2026-12-31', slug:'us-x-iran-ceasefire-by-december-31', color:'var(--bg-success)', pctClass:'up', pct:69, impact:'low', action:'9-month cumulative — NOT imminent' },
+  { id:'ceasefire', tier:3, label:'Ceasefire by Dec 31', deadline:'2026-12-31', slug:'us-x-iran-ceasefire-by-december-31', color:'var(--bg-success)', pctClass:'up', pct:78, impact:'low', action:'9-month cumulative — NOT imminent. NEVER trim on this.' },
+  { id:'trump_opsend', tier:3, label:'Trump ops-end Apr 30', deadline:'2026-04-30', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:57, impact:'low', action:'Trump beta — T1 override when diverged' },
 ];
 
 function daysUntil(dateStr) {
@@ -1151,10 +1191,10 @@ function updateReview() {
   s1 += '.';
   parts.push(s1);
 
-  // sentence 2: Deleveraging rule v3 — requires ALL THREE simultaneously:
-  // 1. Oil -10%+ intraday  2. Physical: vessels dropping OR transits >20  3. ops-end Jun 30 >=80% held 24h + Iran mil <70%
+  // sentence 2: Deleveraging rule v3.1 — requires ALL THREE simultaneously:
+  // 1. Oil -10%+ intraday  2. Physical: non-Iranian transits >20 SUSTAINED 3+ days OR Hormuz norm Apr 15 >40%  3. ops-end Jun 30 >=80% held 24h + Iran mil <70%
   // SPR swap ceiling at $110-115 (Wright rolling structure, NOT depleting, does NOT block trims)
-  // Trump filter: oil drop on Trump verbal + Iran denial + vessel count flat = HOLD
+  // Trump filter: Apr 6 pause extension fits pattern. oil drop on Trump verbal + Iran denial + vessel count flat = HOLD
   // Ceasefire Dec 31 is CUMULATIVE (9-month) — NEVER a trim trigger on its own
   const oe = liveData.opsEnd;
   const vessels = liveData.vesselCount || null;
@@ -1175,14 +1215,14 @@ function updateReview() {
       s2 = '⚠️ Ops-end Jun 30 at <strong class="dn">' + oe + '%</strong> — above 80% threshold. ';
       if (physicalConfirm) {
         s2 += (vesselsDropping ? 'Vessels at ' + vessels.toLocaleString() + ' (dropping). ' : 'Daily transits at ' + transits + ' (>20). ');
-        s2 += '<strong class="dn">TRIM TRIGGER MET — execute 50% oil trim</strong> (GUSH 200, USO 75, OILK 50).';
+        s2 += '<strong class="dn">TRIM TRIGGER MET — execute 50% oil trim</strong> (GUSH 125 trading, USO 50, OILK 25). HSA GUSH follows Apr 6 deadline only.';
       } else {
         s2 += 'Requires confirmation: vessel count dropping below 2,000 AND holds 24h AND Iran mil vs Israel <70%. <strong>If all 3 confirmed: trim 50% oil</strong>. PM signal without physical = HOLD.';
       }
     } else if (vessels !== null && vessels < 1500) {
       s2 = '🔴 Vessels at <strong class="dn">' + vessels.toLocaleString() + '</strong> — <strong>below 1,500 threshold, TRIM OIL</strong>. Strait physically reopening.';
     } else if (transitsHigh) {
-      s2 = '🔴 Daily transits at <strong class="dn">' + transits + '</strong> (>20/day) — <strong>Hormuz physically reopening, TRIM OIL</strong>.';
+      s2 = '⚠️ Daily transits at <strong class="wn">' + transits + '</strong> (>20/day) — requires SUSTAINED 3+ days to confirm. Single-day spike = AIS spoofing noise. <strong>Monitor, do NOT trim on single day</strong>.';
     } else if (oe !== null && oe >= 70) {
       s2 = '⚠️ Ops-end Jun 30 at <strong class="wn">' + oe + '%</strong> approaching 80% trim threshold. <strong>Prepare trim orders</strong>. Trump verbal + Iran denial + flat vessels = automatic HOLD.';
     } else if (hz !== null && hz >= 60) {
@@ -1200,7 +1240,7 @@ function updateReview() {
   let s3 = '';
   const gushV = gushRet ? parseFloat(gushRet) : 0;
   if (gushV >= 40) {
-    s3 = 'GUSH +' + gushRet + '% has hit the 40-50% trim zone from exit trigger #3 — <strong>this is a sell, take 30-50% off and lock in gains</strong>. Rebalance into GLD or SQQQ if you want to stay hedged.';
+    s3 = 'GUSH +' + gushRet + '% has hit the 40-50% trim zone from exit trigger #5 — <strong>this is a sell, take 30-50% off and lock in gains</strong>. Rebalance into SQQQ or FRO if you want to stay hedged.';
   } else if (gushV >= 25) {
     s3 = 'GUSH +' + gushRet + '% is running but hasn\'t hit the 40% aggressive trim level — <strong>raise stops to +15% from entry and let it ride</strong>. Risk/reward still favors holding.';
   } else if (btcVal && btcVal < 70000) {
@@ -1228,6 +1268,20 @@ function openModal() {
 function closeModal() {
   document.getElementById('pos-modal').classList.remove('open');
 }
+// ---- main tab navigation ----
+function switchMainTab(tab) {
+  document.querySelectorAll('.main-tab').forEach((el, i) => {
+    const tabs = ['home','signals','news','markets'];
+    el.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(el => {
+    el.classList.toggle('active', el.id === 'tab-' + tab);
+  });
+  try { localStorage.setItem('hormuz_tab', tab); } catch(_) {}
+}
+// restore last active tab on load
+try { const t = localStorage.getItem('hormuz_tab'); if (t) switchMainTab(t); } catch(_) {}
+
 function switchTab(tab) {
   document.getElementById('tab-json').classList.toggle('active', tab==='json');
   document.getElementById('tab-add').classList.toggle('active', tab==='add');
@@ -1624,12 +1678,12 @@ function updateMar31Tracker() {
   if (pct === null || pct === undefined) { tracker.style.display = 'none'; return; }
 
   tracker.style.display = '';
-  const deadline = new Date('2026-03-31');
+  const deadline = new Date('2026-04-07');
   const daysLeft = Math.max(0, Math.ceil((deadline - new Date()) / 86400000));
 
-  document.getElementById('mar31-pct').innerHTML = '<span class="' + (pct >= 50 ? 'dn' : pct >= 35 ? 'wn' : 'up') + '">' + pct + '%</span>';
+  document.getElementById('mar31-pct').innerHTML = '<span class="' + (pct >= 60 ? 'dn' : pct >= 40 ? 'wn' : 'up') + '">' + pct + '%</span>';
   document.getElementById('mar31-fill').style.width = pct + '%';
-  document.getElementById('mar31-fill').style.background = pct >= 50 ? 'var(--bg-danger)' : pct >= 40 ? 'var(--bg-warning)' : 'var(--bg-success)';
+  document.getElementById('mar31-fill').style.background = pct >= 60 ? 'var(--bg-danger)' : pct >= 50 ? 'var(--bg-warning)' : 'var(--bg-success)';
   document.getElementById('mar31-countdown').textContent = daysLeft === 0 ? 'Resolves today' : daysLeft + ' days to resolution';
 
   // 7-day delta from localStorage
@@ -1652,15 +1706,15 @@ function updateMar31Tracker() {
   // Alerts
   const alertEl = document.getElementById('mar31-alert');
   tracker.className = 'mar31';
-  if (pct >= 50) {
+  if (pct >= 60) {
     tracker.className = 'mar31 mar31-trim';
-    alertEl.innerHTML = '<div class="mar31-alert" style="background:#fee2e2;color:#991b1b">🔴 EXECUTE 50% OIL TRIM — ceasefire by Mar 31 at ' + pct + '%</div>';
-  } else if (pct >= 40) {
+    alertEl.innerHTML = '<div class="mar31-alert" style="background:#fee2e2;color:#991b1b">🔴 EXECUTE 50% OIL TRIM — ceasefire by Apr 7 at ' + pct + '%</div>';
+  } else if (pct >= 50) {
     tracker.className = 'mar31 mar31-stage';
     alertEl.innerHTML = '<div class="mar31-alert" style="background:#fef3c7;color:#854d0e">⚠️ Prepare trim orders — ceasefire probability staging at ' + pct + '%</div>';
-  } else if (pct >= 35) {
+  } else if (pct >= 40) {
     tracker.className = 'mar31 mar31-warn';
-    alertEl.innerHTML = '<div class="mar31-alert" style="background:#fef9c3;color:#854d0e">Watch: ceasefire probability rising — ' + pct + '% (warn threshold 35%)</div>';
+    alertEl.innerHTML = '<div class="mar31-alert" style="background:#fef9c3;color:#854d0e">Watch: ceasefire probability rising — ' + pct + '% (flag threshold 40%)</div>';
   } else {
     alertEl.innerHTML = '';
   }

@@ -188,9 +188,9 @@ button:hover{background:var(--bg2);color:var(--text)}
 
 <div class="mets" id="owner-metrics" style="display:none">
   <div class="mc"><div class="mcl">Net liquidation</div><div class="mcv" id="m0">—</div></div>
-  <div class="mc"><div class="mcl">Daily P&L</div><div class="mcv fl" id="m1">—</div></div>
   <div class="mc"><div class="mcl">Unrealized P&L</div><div class="mcv fl" id="m2">—</div></div>
-  <div class="mc"><div class="mcl">Cash / leverage</div><div class="mcv fl" id="m3">—</div></div>
+  <div class="mc"><div class="mcl">Margin used</div><div class="mcv fl" id="m-margin">—</div><div id="m-leverage" style="font-size:11px;color:var(--text3);margin-top:2px"></div></div>
+  <div class="mc"><div class="mcl">Margin cost/yr</div><div class="mcv fl" id="m-apr">—</div><div id="m-apr-detail" style="font-size:11px;color:var(--text3);margin-top:2px"></div></div>
 </div>
 
 <div class="review" id="review-box" style="display:none">
@@ -389,6 +389,7 @@ button:hover{background:var(--bg2);color:var(--text)}
     <div class="modal-tabs">
       <div class="modal-tab active" id="tab-json" onclick="switchTab('json')">JSON import</div>
       <div class="modal-tab" id="tab-add" onclick="switchTab('add')">Add position</div>
+      <div class="modal-tab" id="tab-acct" onclick="switchTab('acct')">Account</div>
     </div>
     <div id="panel-json">
       <textarea id="json-input" spellcheck="false" placeholder='Paste positions JSON array here...'></textarea>
@@ -419,6 +420,22 @@ button:hover{background:var(--bg2);color:var(--text)}
       <div class="modal-actions">
         <button onclick="closeModal()">Cancel</button>
         <button class="btn-primary" onclick="addPosition()">Add position</button>
+      </div>
+    </div>
+    <div id="panel-acct" style="display:none">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">
+        Set your IBKR account values to compute margin cost and leverage. Cash balance should be negative if you're on margin (e.g. -15100 means $15.1K margin loan).
+      </div>
+      <div class="modal-row">
+        <div><label>Net liquidation ($)</label><input id="acct-netliq" type="number" step="any" placeholder="e.g. 37745" oninput="updateAcctPreview()"></div>
+        <div><label>Cash balance ($)</label><input id="acct-cash" type="number" step="any" placeholder="e.g. -15100" oninput="updateAcctPreview()"></div>
+      </div>
+      <div style="margin-top:12px;padding:10px 12px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--r);font-size:12px;line-height:1.6" id="acct-preview">
+        Set values above to see margin cost preview.
+      </div>
+      <div class="modal-actions">
+        <button onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveAcctSettings()">Save</button>
       </div>
     </div>
   </div>
@@ -842,6 +859,130 @@ function render(){
   const uel=document.getElementById('m2');
   uel.textContent=(tot>=0?'+':'')+'$'+Math.round(tot).toLocaleString();
   uel.className='mcv '+(tot>=0?'up':'dn');
+
+  // Update all portfolio metrics
+  updatePortfolioMetrics(tot);
+}
+
+// ---- IBKR Margin Rate Schedule (USD, as of Mar 2026) ----
+// Interactive Brokers blended tiered rates. Fed funds ~4.33%, IBKR Pro.
+// Rates: benchmark + spread. BM = Fed Funds Effective Rate
+const IBKR_BM = 4.33; // Fed funds rate (update when Fed changes)
+const IBKR_TIERS = [
+  // { upTo: balance ceiling, spread: bps above BM }
+  { upTo: 100000,   spread: 1.50 },  // ≤$100K: BM + 1.5%
+  { upTo: 1000000,  spread: 1.00 },  // $100K-$1M: BM + 1.0%
+  { upTo: 3000000,  spread: 0.75 },  // $1M-$3M: BM + 0.75%
+  { upTo: Infinity, spread: 0.50 },  // $3M+: BM + 0.5%
+];
+
+// Compute blended IBKR margin interest for a given loan amount
+function ibkrMarginRate(loanAmt) {
+  if (loanAmt <= 0) return { rate: 0, annual: 0, monthly: 0, daily: 0 };
+  let remaining = Math.abs(loanAmt);
+  let weightedInterest = 0;
+  let prev = 0;
+  for (const tier of IBKR_TIERS) {
+    const tierSize = Math.min(remaining, tier.upTo - prev);
+    if (tierSize <= 0) break;
+    const tierRate = (IBKR_BM + tier.spread) / 100;
+    weightedInterest += tierSize * tierRate;
+    remaining -= tierSize;
+    prev = tier.upTo;
+  }
+  const annual = weightedInterest;
+  const blendedRate = (annual / Math.abs(loanAmt)) * 100;
+  return {
+    rate: Math.round(blendedRate * 100) / 100,
+    annual: Math.round(annual),
+    monthly: Math.round(annual / 12),
+    daily: Math.round((annual / 365) * 100) / 100,
+  };
+}
+
+// Portfolio account settings — stored in localStorage, editable
+function loadAccountSettings() {
+  try {
+    const s = localStorage.getItem('hormuz_account');
+    if (s) return JSON.parse(s);
+  } catch(_) {}
+  return { cash: 0, netliq: 0 }; // 0 = auto-compute from positions
+}
+function saveAccountSettings(s) {
+  localStorage.setItem('hormuz_account', JSON.stringify(s));
+}
+let acctSettings = loadAccountSettings();
+
+function updatePortfolioMetrics(unrealizedPnl) {
+  if (!pos.length) return;
+
+  // Compute total market value of positions
+  let stockMV = 0, optionMV = 0;
+  pos.forEach(p => {
+    if (p.type === 'stock') {
+      const price = p.lastPrice || p.avg;
+      stockMV += p.qty * price;
+    } else if (p.type === 'option') {
+      // Options: qty * 100 * avg (contract value)
+      optionMV += p.qty * 100 * (p.avg || 0);
+    }
+  });
+  const totalMV = stockMV + optionMV;
+
+  // Net liq = manual override or computed (positions + cash)
+  const cash = acctSettings.cash || 0;
+  const netliq = acctSettings.netliq || (totalMV + cash);
+
+  // Margin = how much borrowed (negative cash = margin loan)
+  const marginUsed = cash < 0 ? Math.abs(cash) : 0;
+  const leverage = netliq > 0 ? (totalMV / netliq) : 0;
+
+  // IBKR margin cost
+  const margin = ibkrMarginRate(marginUsed);
+
+  // Update DOM
+  const m0 = document.getElementById('m0');
+  if (m0) { m0.textContent = '$' + Math.round(netliq).toLocaleString(); }
+
+  const mMargin = document.getElementById('m-margin');
+  const mLeverage = document.getElementById('m-leverage');
+  if (mMargin) {
+    if (marginUsed > 0) {
+      mMargin.textContent = '-$' + Math.round(marginUsed).toLocaleString();
+      mMargin.className = 'mcv dn';
+    } else {
+      mMargin.textContent = '$0';
+      mMargin.className = 'mcv fl';
+    }
+  }
+  if (mLeverage) {
+    mLeverage.textContent = leverage > 0 ? leverage.toFixed(2) + 'x leverage' : '';
+  }
+
+  const mApr = document.getElementById('m-apr');
+  const mAprDetail = document.getElementById('m-apr-detail');
+  if (mApr) {
+    if (marginUsed > 0) {
+      mApr.textContent = margin.rate + '% APR';
+      mApr.className = 'mcv ' + (margin.rate > 6 ? 'dn' : 'wn');
+    } else {
+      mApr.textContent = 'No margin';
+      mApr.className = 'mcv fl';
+    }
+  }
+  if (mAprDetail) {
+    if (marginUsed > 0) {
+      mAprDetail.textContent = '$' + margin.monthly + '/mo · $' + margin.daily + '/day · IBKR Pro';
+    } else {
+      mAprDetail.textContent = '';
+    }
+  }
+
+  // Store for review
+  liveData.totalPnl = unrealizedPnl;
+  liveData.netliq = netliq;
+  liveData.marginUsed = marginUsed;
+  liveData.marginRate = margin.rate;
 }
 
 // ---- Yahoo Finance ----
@@ -1165,7 +1306,7 @@ async function fPM(){
 }
 
 // ---- live data store for review ----
-let liveData = { ceasefire: null, opsEnd: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null, vesselCount: null, dailyTransits: null, mar31Ceasefire: null, ust10y: null, usdjpy: null };
+let liveData = { ceasefire: null, opsEnd: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null, vesselCount: null, dailyTransits: null, mar31Ceasefire: null, ust10y: null, usdjpy: null, netliq: null, marginUsed: null, marginRate: null };
 // restore liveData from cache on load
 try {
   const ld = localStorage.getItem('hc_liveData');
@@ -1310,8 +1451,36 @@ try { const t = localStorage.getItem('hormuz_tab'); if (t) switchMainTab(t); } c
 function switchTab(tab) {
   document.getElementById('tab-json').classList.toggle('active', tab==='json');
   document.getElementById('tab-add').classList.toggle('active', tab==='add');
+  document.getElementById('tab-acct').classList.toggle('active', tab==='acct');
   document.getElementById('panel-json').style.display = tab==='json' ? '' : 'none';
   document.getElementById('panel-add').style.display = tab==='add' ? '' : 'none';
+  document.getElementById('panel-acct').style.display = tab==='acct' ? '' : 'none';
+  if (tab === 'acct') {
+    document.getElementById('acct-netliq').value = acctSettings.netliq || '';
+    document.getElementById('acct-cash').value = acctSettings.cash || '';
+    updateAcctPreview();
+  }
+}
+function updateAcctPreview() {
+  const netliq = parseFloat(document.getElementById('acct-netliq').value) || 0;
+  const cash = parseFloat(document.getElementById('acct-cash').value) || 0;
+  const marginUsed = cash < 0 ? Math.abs(cash) : 0;
+  const m = ibkrMarginRate(marginUsed);
+  const el = document.getElementById('acct-preview');
+  if (marginUsed > 0) {
+    el.innerHTML = `<strong>Margin loan:</strong> $${marginUsed.toLocaleString()}<br><strong>Blended rate:</strong> ${m.rate}% APR (BM ${IBKR_BM}% + spread)<br><strong>Annual cost:</strong> $${m.annual.toLocaleString()}<br><strong>Monthly:</strong> $${m.monthly.toLocaleString()} · <strong>Daily:</strong> $${m.daily}<br><strong>Leverage:</strong> ${netliq > 0 ? ((netliq - cash) / netliq).toFixed(2) : '—'}x`;
+  } else {
+    el.innerHTML = 'No margin loan (cash ≥ 0). Set a negative cash balance to see margin costs.';
+  }
+}
+function saveAcctSettings() {
+  acctSettings = {
+    netliq: parseFloat(document.getElementById('acct-netliq').value) || 0,
+    cash: parseFloat(document.getElementById('acct-cash').value) || 0,
+  };
+  saveAccountSettings(acctSettings);
+  render();
+  closeModal();
 }
 function importJson() {
   const errEl = document.getElementById('json-err');

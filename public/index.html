@@ -186,14 +186,14 @@ button:hover{background:var(--bg2);color:var(--text)}
 <!-- ═══ HOME TAB ═══ -->
 <div class="tab-panel active" id="tab-home">
 
-<div class="mets">
-  <div class="mc"><div class="mcl">Net liquidation</div><div class="mcv" id="m0">$37,745</div></div>
-  <div class="mc"><div class="mcl">Daily P&L</div><div class="mcv up" id="m1">+$825</div></div>
-  <div class="mc"><div class="mcl">Unrealized P&L</div><div class="mcv up" id="m2">—</div></div>
-  <div class="mc"><div class="mcl">Cash / leverage</div><div class="mcv dn" id="m3">-$15.1K</div></div>
+<div class="mets" id="owner-metrics" style="display:none">
+  <div class="mc"><div class="mcl">Net liquidation</div><div class="mcv" id="m0">—</div></div>
+  <div class="mc"><div class="mcl">Daily P&L</div><div class="mcv fl" id="m1">—</div></div>
+  <div class="mc"><div class="mcl">Unrealized P&L</div><div class="mcv fl" id="m2">—</div></div>
+  <div class="mc"><div class="mcl">Cash / leverage</div><div class="mcv fl" id="m3">—</div></div>
 </div>
 
-<div class="review" id="review-box">
+<div class="review" id="review-box" style="display:none">
   <div class="review-label">Portfolio review</div>
   <div class="review-text" id="review-text">Waiting for live data...</div>
 </div>
@@ -436,8 +436,12 @@ const FH_WS_BASE = 'wss://ws.finnhub.io?token=';
 // Finnhub free API key — get yours at https://finnhub.io/register
 let FINNHUB_KEY = localStorage.getItem('finnhub_key') || 'd70nlihr01ql6rnvvff0d70nlihr01ql6rnvvffg';
 
-// ---- POSITIONS JSON ---- default positions, overridden by localStorage if present
-const DEFAULT_POSITIONS=[
+// ---- POSITIONS JSON ---- positions are private, stored in localStorage only
+// New visitors see empty state. Use "Edit positions" to import your portfolio.
+const DEFAULT_POSITIONS=[];
+
+// Owner unlock: if hormuz_owner flag is set, seed defaults on first visit
+const OWNER_SEED_POSITIONS=[
   {ticker:"GUSH",label:"2x oil E&P",type:"stock",bg:"bo",qty:400,avg:36.155,lastPrice:46.03},
   {ticker:"USO",label:"WTI crude",type:"stock",bg:"bo",qty:125,avg:111.602,lastPrice:117.26},
   {ticker:"OILK",label:"Roll-efficient oil",type:"stock",bg:"bo",qty:200,avg:56.038,lastPrice:55.14},
@@ -470,11 +474,17 @@ function loadPositions() {
     const saved = localStorage.getItem('hormuz_positions');
     if (saved) return JSON.parse(saved);
   } catch(_) {}
-  return DEFAULT_POSITIONS;
+  // If owner flag is set but no positions saved yet, seed owner defaults
+  if (localStorage.getItem('hormuz_owner')) {
+    localStorage.setItem('hormuz_positions', JSON.stringify(OWNER_SEED_POSITIONS));
+    return OWNER_SEED_POSITIONS;
+  }
+  return DEFAULT_POSITIONS; // empty array for public visitors
 }
 function savePositions(p) {
   localStorage.setItem('hormuz_positions', JSON.stringify(p));
 }
+function isOwner() { return !!localStorage.getItem('hormuz_owner'); }
 let pos = loadPositions();
 
 // ---- helpers ----
@@ -783,6 +793,21 @@ function render(){
   const closed = mktState !== 'open';
   const thEst = document.getElementById('th-est');
   if (thEst) thEst.textContent = closed ? (mktState === 'weekend' ? 'Wknd est.' : 'O/N est.') : 'Est.';
+
+  // Show/hide owner-only sections
+  const hasPos = pos.length > 0;
+  const ownerMetrics = document.getElementById('owner-metrics');
+  const reviewBox = document.getElementById('review-box');
+  if (ownerMetrics) ownerMetrics.style.display = hasPos ? '' : 'none';
+  if (reviewBox) reviewBox.style.display = hasPos ? '' : 'none';
+
+  // Show locked state for visitors with no positions
+  if (!hasPos) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="7" style="text-align:center;padding:2rem;color:var(--text3);font-size:13px">No positions loaded. Use <strong>Edit positions</strong> below to import your portfolio.</td>';
+    tb.appendChild(tr);
+    return;
+  }
 
   pos.forEach(p=>{
     // Compute PnL live for stocks, use static pnl for options
@@ -1500,6 +1525,8 @@ function renderNews(items) {
 const AI_SIGNAL_URL = '/api/signal';
 const AI_SIGNAL_INTERVAL = 300000; // refresh every 5 min (Claude API cost-aware)
 async function fAISignal() {
+  // skip if no positions (public visitor)
+  if (!pos.length) { setStatus('ai','ok','AI Signal  | no positions'); return; }
   // skip if recently fetched
   if (aiSignalAge && (Date.now() - aiSignalAge) < AI_SIGNAL_INTERVAL) {
     const ago = Math.round((Date.now() - aiSignalAge) / 1000);
@@ -1787,6 +1814,25 @@ function promptFinnhubKey() {
     }
   }
 }
+
+// Owner unlock via URL: ?owner=KEY sets the owner flag and seeds positions
+// After first use, the flag persists in localStorage — no need to pass it again
+(function checkOwnerUnlock() {
+  const params = new URLSearchParams(window.location.search);
+  const key = params.get('owner');
+  if (key) {
+    localStorage.setItem('hormuz_owner', key);
+    // Seed positions if not already saved
+    if (!localStorage.getItem('hormuz_positions')) {
+      localStorage.setItem('hormuz_positions', JSON.stringify(OWNER_SEED_POSITIONS));
+      pos = OWNER_SEED_POSITIONS;
+    }
+    // Clean URL (remove ?owner= from address bar)
+    const clean = new URL(window.location);
+    clean.searchParams.delete('owner');
+    window.history.replaceState({}, '', clean);
+  }
+})();
 
 renderExitSignals();renderTimeline(FALLBACK_TIMELINE);render();updateSPRClock();go();setInterval(go,60000);
 </script>

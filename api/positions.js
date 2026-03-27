@@ -1,3 +1,6 @@
+// Positions API — requires RULES_SECRET auth to view actual positions.
+// Unauthenticated requests get an empty response.
+
 const DEFAULT_POSITIONS = [
   { ticker: "GUSH", label: "2x oil E&P", type: "stock", bg: "bo", qty: 400, avg: 36.155, lastPrice: 46.03 },
   { ticker: "USO", label: "WTI crude", type: "stock", bg: "bo", qty: 125, avg: 111.602, lastPrice: 117.26 },
@@ -17,6 +20,20 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(204).end();
+
+  // Auth check — only return positions if authenticated
+  const secret = process.env.RULES_SECRET;
+  const authHeader = req.headers['authorization']?.replace('Bearer ', '');
+  const queryKey = req.query.key;
+  const isAuthed = secret && (authHeader === secret || queryKey === secret);
+
+  if (!isAuthed) {
+    return res.status(200).json({
+      positions: [],
+      summary: { totalPositions: 0, totalCostBasis: 0, totalUnrealizedPnl: 0, returnPct: 0, stocks: 0, options: 0, updatedAt: new Date().toISOString() },
+      note: 'Positions are private. Authenticate with ?key=SECRET or Authorization header.',
+    });
+  }
 
   // Compute summary stats — PnL is live for stocks (lastPrice - avg) * qty, static for options
   let totalCost = 0;

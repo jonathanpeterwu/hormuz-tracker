@@ -198,8 +198,8 @@ async function generateSignals(apiKey, positions, liveData) {
     const { fileURLToPath } = await import('node:url');
     const { dirname, join } = await import('node:path');
     const dir = dirname(fileURLToPath(import.meta.url));
-    rules = readFileSync(join(dir, '../../rules/v3.1.md'), 'utf-8');
-    rulesVersion = 'v3.1';
+    rules = readFileSync(join(dir, '../../rules/v3.2.md'), 'utf-8');
+    rulesVersion = 'v3.2';
   }
 
   const context = `
@@ -215,9 +215,12 @@ LIVE MARKET DATA (as of ${new Date().toISOString()}):
 - T3: Ceasefire Dec 31: ${liveData.ceasefire ?? 'n/a'}% (9-month cumulative — NEVER trim on this)
 - 10Y UST yield: ${liveData.ust10y ?? 'n/a'}% (ADD TLT ≥4.60, SPIRAL ≥4.70, 20Y hit 5.00%)
 - USDJPY: ${liveData.usdjpy ?? 'n/a'} (STRESS if USDJPY×Oil >15,500)
+- T2: Ceasefire before Trump-Xi May 14: 59% — KEY SIGNAL (real deal window ~May 1-7)
 - SPR swap ceiling: $110-115 (Wright rolling structure, NOT depleting)
-- Apr 6 deadline: Trump energy pause expires 8pm ET
-- IRGC navy commander Tangsiri killed Mar 26
+- Apr 6 deadline: Trump energy pause expires 8pm ET. Most likely: extension.
+- Japan doom loop ACTIVATED: 10Y 2.37% (1999 high), USDJPY 159.9, composite 16,630 (>15,500)
+- BOJ Apr 28 = next doom loop accelerant (25bp hike priced in)
+- DB Pressure Index: RECORD HIGH — TACO psyop filter on MAX
 
 POSITIONS:
 ${positions.map(p => `- ${p.ticker} (${p.label}): ${p.qty} shares @ $${p.avg}, last $${p.lastPrice || 'n/a'}`).join('\n')}

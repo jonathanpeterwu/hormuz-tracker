@@ -1,6 +1,6 @@
 // AI Signal Engine — Hormuz War Room
 // Runs System 1 (v3.2 status check) and System 2 (Trade Implementation Council)
-// Modes: "status" | "council" | "both" | "quick"
+// Modes: "status" | "council" | "both" | "quick" | "insights"
 
 import { kv } from '@vercel/kv';
 import { rules as fileRules, rulesVersion as fileVersion } from '../rules/current.js';
@@ -136,6 +136,34 @@ RESPONSE MODES
 "both" → run System 1 then System 2 on current posture
 "quick" → System 1 only, one-line per indicator`;
 
+const INSIGHT_SYSTEM = `You are the Trade Insights Engine for the Hormuz War Room dashboard.
+Your job is to generate 3-5 actionable trade insight cards based on current market data and v3.2 trading rules.
+
+Each insight should be:
+- Specific and actionable (not generic)
+- Grounded in v3.2 rules (reference specific thresholds)
+- Prioritized by urgency and impact
+- Honest about uncertainty
+
+HARD RULES:
+- v3.2 trim requires ALL 3 conditions
+- TACO filter auto-vetoes trims during psyop windows
+- Dec 31 ceasefire is NEVER a trim trigger
+- FRO: no sale before June dividend unless Hormuz Apr15 >40%
+
+Output ONLY a JSON array. Each object:
+{
+  "type": "action" | "watch" | "warning" | "info",
+  "urgency": "high" | "medium" | "low",
+  "title": "Short headline (max 60 chars)",
+  "body": "1-2 sentence explanation with specific numbers",
+  "ticker": "relevant ticker or null",
+  "rule": "v3.2 rule reference"
+}
+
+Sort by urgency (high first). Return 3-5 insights maximum.
+Respond with ONLY the JSON array, no other text.`;
+
 async function loadRules() {
   try {
     const kvRules = await kv.get('trading_rules');
@@ -158,13 +186,54 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
 
   const { mode, action, liveData, positions } = req.body;
-  if (!mode) return res.status(400).json({ error: 'mode required (status|council|both|quick)' });
+  if (!mode) return res.status(400).json({ error: 'mode required (status|council|both|quick|insights)' });
 
   const { rules, version } = await loadRules();
 
   // Build market context from live data
   const context = buildContext(liveData, positions);
 
+  // ---- Insights mode: separate system prompt, returns JSON array ----
+  if (mode === 'insights') {
+    const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()];
+    const insightContext = context + `\nDay: ${dow}\n\nGenerate 3-5 trade insight cards based on this data. Focus on what changed, what is approaching a threshold, and what action (if any) to take today.`;
+
+    try {
+      const resp = await fetch(ANTHROPIC_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1500,
+          temperature: 0.4,
+          system: INSIGHT_SYSTEM,
+          messages: [{ role: 'user', content: `CURRENT TRADING RULES (${version}):\n${rules}\n\n${insightContext}` }],
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.text();
+        throw new Error(`Claude API ${resp.status}: ${err}`);
+      }
+
+      const data = await resp.json();
+      const text = data.content?.[0]?.text || '';
+      const match = text.match(/\[[\s\S]*\]/);
+      if (!match) return res.status(500).json({ error: 'Failed to parse insights' });
+
+      const insights = JSON.parse(match[0]);
+      res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
+      return res.status(200).json({ insights, rulesVersion: version, generatedAt: new Date().toISOString() });
+    } catch (e) {
+      return res.status(502).json({ error: e.message });
+    }
+  }
+
+  // ---- Standard modes: status, quick, council, both ----
   let userPrompt;
   if (mode === 'status') {
     userPrompt = `Run System 1 — full 6-indicator status check.\n\nCURRENT TRADING RULES (${version}):\n${rules}\n\n${context}`;
@@ -176,7 +245,7 @@ export default async function handler(req, res) {
   } else if (mode === 'both') {
     userPrompt = `Run both systems:\n1. System 1 — full 6-indicator status check\n2. System 2 — evaluate current posture and suggest optimal next action\n\nCURRENT TRADING RULES (${version}):\n${rules}\n\n${context}`;
   } else {
-    return res.status(400).json({ error: 'Invalid mode. Use: status, council, both, quick' });
+    return res.status(400).json({ error: 'Invalid mode. Use: status, council, both, quick, insights' });
   }
 
   try {

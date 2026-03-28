@@ -2216,7 +2216,7 @@ function formatAISEOutput(text) {
 }
 
 // ---- Trade Insights (homepage) ----
-const INSIGHTS_URL = '/api/trade-insights';
+const INSIGHTS_URL = '/api/ai-signal-engine';
 const INSIGHTS_INTERVAL = 600000; // 10 min
 let insightsAge = 0;
 
@@ -2237,6 +2237,7 @@ async function fTradeInsights() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        mode: 'insights',
         liveData: {
           wti: liveData.wti, brentYahoo: liveData.brentYahoo, btc: liveData.btc, gold: liveData.gold,
           ust10y: liveData.ust10y, usdjpy: liveData.usdjpy,

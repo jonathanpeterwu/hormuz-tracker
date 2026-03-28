@@ -465,6 +465,7 @@ const OWNER_SEED_POSITIONS=[
   {ticker:"SQQQ",label:"Short QQQ 3x",type:"stock",bg:"bs",qty:100,avg:78.985,lastPrice:82.50},
   {ticker:"NTR",label:"Diversified fert.",type:"stock",bg:"ba",qty:40,avg:74.815,lastPrice:73.69},
   {ticker:"CANE",label:"Sugar ETF",type:"stock",bg:"ba",qty:200,avg:10.485,lastPrice:10.63},
+  {ticker:"FRO",label:"Tanker (Frontline)",type:"stock",bg:"bo",qty:75,avg:22.50,lastPrice:22.50},
   {ticker:"TLT Jun18 $84 Put",label:"Bonds short",type:"option",bg:"bp",qty:2,avg:0,pnl:5.68},
   {ticker:"EWY Jun18 $100 Put",label:"Korea short",type:"option",bg:"bp",qty:1,avg:0,pnl:-41.21},
   {ticker:"TSM Jan15'27 $185 Put",label:"Taiwan tail",type:"option",bg:"bp",qty:1,avg:6.331,pnl:-48.59},
@@ -613,19 +614,17 @@ function computeEstimates(mids) {
 // ---- exit signals (Polymarket) — tiered by signal quality ----
 const EXIT_SIGNALS = [
   // TIER 1 — GROUND TRUTH (weight: HIGH, unmanipulable physical signals)
-  { id:'military', tier:1, label:'Military action Mar 31', deadline:'2026-03-31', slug:'will-iran-take-military-action-by-march-31', color:'var(--bg-danger)', pctClass:'dn', pct:87, impact:'high', action:'Watch if <70% — thesis weakening' },
-  { id:'iranmil', tier:1, label:'Iran mil vs Israel', deadline:'2026-12-31', slug:null, color:'var(--bg-danger)', pctClass:'dn', pct:100, impact:'high', action:'100% — active conflict confirmed' },
-  { id:'hormuz', tier:1, label:'Hormuz normal by Apr 15', deadline:'2026-04-15', slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30', color:'var(--bg-warning)', pctClass:'wn', pct:25, impact:'high', action:'If >40% sell FRO, trim oil' },
+  { id:'hormuz', tier:1, label:'Hormuz normal by Apr 30', deadline:'2026-04-30', slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30', color:'var(--bg-warning)', pctClass:'wn', pct:25, impact:'high', action:'If >40% sell FRO, trim oil' },
   { id:'ships', tier:1, label:'20+ non-Iranian ships sustained 3d', deadline:'2026-04-30', slug:null, color:'var(--bg-info)', pctClass:'inf', pct:15, impact:'high', action:'Single-day spikes = AIS noise' },
-  // TIER 2 — STRUCTURAL (weight: MEDIUM)
-  { id:'ceasefire_apr7', tier:2, label:'Ceasefire by Apr 7', deadline:'2026-04-07', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:33, impact:'high', action:'FLAG 40% | STAGE 50% | TRIM 60%' },
-  { id:'opsend', tier:2, label:'Ops-end Jun 30', deadline:'2026-06-30', slug:'trump-ends-iran-military-operations-by-june-30', color:'var(--bg-danger)', pctClass:'dn', pct:78, impact:'high', action:'Trim trigger at 80% + physical confirm' },
-  { id:'regime', tier:2, label:'Iran regime falls Apr 30', deadline:'2026-04-30', slug:null, color:'var(--bg-info)', pctClass:'inf', pct:9, impact:'medium', action:'Low prob, high impact if rises' },
-  { id:'usforces', tier:2, label:'US forces enter Iran Apr 30', deadline:'2026-04-30', slug:null, color:'var(--bg-danger)', pctClass:'dn', pct:15, impact:'high', action:'Smart money YES — next-leg thesis' },
-  { id:'ceasefire_xi', tier:2, label:'Ceasefire before Trump-Xi', deadline:'2026-05-14', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:59, impact:'high', action:'KEY SIGNAL — confirms May deal window' },
+  // TIER 2 — STRUCTURAL (weight: MEDIUM) — all live from Polymarket
+  { id:'ceasefire_apr7', tier:2, label:'Ceasefire by Apr 7', deadline:'2026-04-07', slug:'us-x-iran-ceasefire-by-april-7', color:'var(--bg-warning)', pctClass:'wn', pct:11, impact:'high', action:'FLAG 40% | STAGE 50% | TRIM 60%' },
+  { id:'opsend', tier:2, label:'Ops-end Jun 30', deadline:'2026-06-30', slug:'trump-announces-end-of-military-operations-against-iran-by-june-30th-566-326-653-781', color:'var(--bg-danger)', pctClass:'dn', pct:74, impact:'high', action:'Trim trigger at 80% + physical confirm' },
+  { id:'usforces', tier:2, label:'US forces enter Iran Apr 30', deadline:'2026-04-30', slug:'us-forces-enter-iran-by-april-30-899', color:'var(--bg-danger)', pctClass:'dn', pct:58, impact:'high', action:'Smart money YES — next-leg thesis' },
+  { id:'regime', tier:2, label:'Iran regime falls Apr 30', deadline:'2026-04-30', slug:'will-the-iranian-regime-fall-by-april-30', color:'var(--bg-info)', pctClass:'inf', pct:7, impact:'medium', action:'Low prob, high impact if rises' },
+  { id:'ceasefire_xi', tier:2, label:'Ceasefire before Trump-Xi', deadline:'2026-05-14', slug:'us-x-iran-ceasefire-before-trump-visits-china', color:'var(--bg-warning)', pctClass:'wn', pct:55, impact:'high', action:'KEY SIGNAL — 55% confirms May deal window' },
   // TIER 3 — NOISE / TRUMP BETA (weight: LOW, discounted)
-  { id:'ceasefire', tier:3, label:'Ceasefire by Dec 31', deadline:'2026-12-31', slug:'us-x-iran-ceasefire-by-december-31', color:'var(--bg-success)', pctClass:'up', pct:78, impact:'low', action:'9-month cumulative — NOT imminent. NEVER trim on this.' },
-  { id:'trump_opsend', tier:3, label:'Trump ops-end Apr 30', deadline:'2026-04-30', slug:null, color:'var(--bg-warning)', pctClass:'wn', pct:57, impact:'low', action:'Trump beta — T1 override when diverged' },
+  { id:'ceasefire', tier:3, label:'Ceasefire by Dec 31', deadline:'2026-12-31', slug:'us-x-iran-ceasefire-by-december-31', color:'var(--bg-success)', pctClass:'up', pct:76, impact:'low', action:'9-month cumulative — NOT imminent. NEVER trim on this.' },
+  { id:'trump_opsend', tier:3, label:'Trump ops-end Apr 30', deadline:'2026-04-30', slug:'trump-announces-end-of-military-operations-against-iran-by-april-30th-753-882-164-769', color:'var(--bg-warning)', pctClass:'wn', pct:47, impact:'low', action:'Trump beta — T1 override when diverged' },
 ];
 
 function daysUntil(dateStr) {
@@ -1008,6 +1007,12 @@ function applyYahooResults(results) {
       if (bel) bel.textContent = 'Brent: ' + f(q.regularMarketPrice);
       return;
     }
+    if (q.symbol === 'GC=F') {
+      liveData.gold = q.regularMarketPrice;
+      const gel = document.getElementById('pxau');
+      if (gel) { gel.textContent = f(q.regularMarketPrice); gel.classList.remove('sh'); }
+      return;
+    }
     pos.forEach(p => {
       const sym = p.yahooTicker || p.ticker;
       if (sym === q.symbol) { p.lastPrice = q.regularMarketPrice; }
@@ -1017,7 +1022,7 @@ function applyYahooResults(results) {
 async function fYahoo(){
   setStatus('yf','pending','Yahoo...');
   const equities = pos.filter(p => p.type !== 'option' && !/\s/.test(p.ticker));
-  const symbols  = [...new Set(equities.map(p => p.yahooTicker || p.ticker)), '^TNX', 'JPY=X', 'CL=F', 'BZ=F'];
+  const symbols  = [...new Set(equities.map(p => p.yahooTicker || p.ticker)), '^TNX', 'JPY=X', 'CL=F', 'BZ=F', 'GC=F'];
   if (!symbols.length) { setStatus('yf','err','No equity tickers'); return false; }
   // restore from cache immediately
   const cached = cacheGet('yf');
@@ -1055,18 +1060,9 @@ function applyHLMids(mids) {
     const mid=mids[coin]; if(!mid)continue;
     const el=document.getElementById(pid); if(el){el.textContent=f(mid);el.classList.remove('sh');}
   }
-  const gldPos = pos.find(p => p.ticker === 'GLD');
-  if(gldPos && gldPos.lastPrice){
-    const gel=document.getElementById('pxau'); if(gel){gel.textContent=f(gldPos.lastPrice);gel.classList.remove('sh');}
-    liveData.gold = gldPos.lastPrice;
-    // show return from avg as the XAU delta (no HL candles for gold)
-    const dxau=document.getElementById('dxau');
-    if(dxau && gldPos.avg){
-      const pct=((gldPos.lastPrice-gldPos.avg)/gldPos.avg)*100;
-      const cls=pct>0?'up':pct<0?'dn':'fl';
-      dxau.innerHTML=`<span class="hl-d"><span class="hl-d-lbl">entry</span><span class="${cls}">${pct>0?'+':''}${pct.toFixed(1)}%</span></span><span class="hl-d" style="color:var(--text3)">via GLD</span>`;
-    }
-  } else { liveData.gold = null; }
+  // Gold price from Yahoo (GC=F), updated in applyYahooResults
+  const gel=document.getElementById('pxau');
+  if(gel && liveData.gold){ gel.textContent=f(liveData.gold); gel.classList.remove('sh'); }
   liveData.btc = mids['BTC'] || null;
   // HL @107 perp — store separately, do NOT use as WTI price
   liveData.hlPerp107 = mids['@107'] || mids['WTI'] || null;
@@ -1254,29 +1250,46 @@ function connectFinnhubWebSocket() {
 
 // ---- Polymarket ----
 const PM_MARKETS=[
-  {slug:'us-x-iran-ceasefire-by-december-31',     v:'pd',b:'bd'},
-  {slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30',v:'ph',b:'bh'},
-  {slug:'trump-ends-iran-military-operations-by-june-30',v:null,b:null},
-  {slug:'will-iran-take-military-action-by-march-31',v:null,b:null},
-  {slug:'us-x-iran-ceasefire-by-march-31',v:null,b:null}
+  // Ceasefire / conflict end
+  {slug:'us-x-iran-ceasefire-by-december-31',     v:'pd',b:'bd', key:'ceasefire_dec31'},
+  {slug:'us-x-iran-ceasefire-by-april-7',         v:null,b:null, key:'ceasefire_apr7'},
+  {slug:'us-x-iran-ceasefire-by-april-30',        v:null,b:null, key:'ceasefire_apr30'},
+  {slug:'us-x-iran-ceasefire-by-may-31',          v:null,b:null, key:'ceasefire_may31'},
+  {slug:'us-x-iran-ceasefire-before-trump-visits-china', v:null,b:null, key:'ceasefire_trump_xi'},
+  {slug:'iran-x-israelus-conflict-ends-by-june-30-813-454-138-725', v:null,b:null, key:'conflict_ends_jun30'},
+  // Hormuz
+  {slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30',v:'ph',b:'bh', key:'hormuz_normal'},
+  // Ops-end / military
+  {slug:'trump-announces-end-of-military-operations-against-iran-by-june-30th-566-326-653-781',v:null,b:null, key:'opsend_jun30'},
+  {slug:'trump-announces-end-of-military-operations-against-iran-by-april-30th-753-882-164-769',v:null,b:null, key:'opsend_apr30'},
+  // US forces / regime
+  {slug:'us-forces-enter-iran-by-april-30-899',   v:null,b:null, key:'usforces_apr30'},
+  {slug:'us-forces-enter-iran-by-december-31-573-642-385-371-179-425-262', v:null,b:null, key:'usforces_dec31'},
+  {slug:'will-the-iranian-regime-fall-by-april-30',v:null,b:null, key:'regime_apr30'},
 ];
 function applyPMData(pmData) {
   PM_MARKETS.forEach(m => {
     const pct = pmData[m.slug];
     if (pct === undefined) return;
-    if(m.slug.includes('ceasefire-by-december')) liveData.ceasefire=pct;
-    if(m.slug.includes('ceasefire-by-march')) liveData.mar31Ceasefire=pct;
-    if(m.slug.includes('hormuz')) liveData.hormuz=pct;
-    if(m.slug.includes('military-operations')) liveData.opsEnd=pct;
-    if(m.slug.includes('military-action')) {
-      const sig = EXIT_SIGNALS.find(s => s.id === 'military');
+    // Map to liveData by key
+    if (m.key === 'ceasefire_dec31') liveData.ceasefire = pct;
+    if (m.key === 'ceasefire_apr7') liveData.mar31Ceasefire = pct; // apr7 replaces mar31 tracker
+    if (m.key === 'hormuz_normal') liveData.hormuz = pct;
+    if (m.key === 'opsend_jun30') liveData.opsEnd = pct;
+    // Map to EXIT_SIGNALS by id
+    const keyToSignal = {
+      ceasefire_dec31: 'ceasefire', ceasefire_apr7: 'ceasefire_apr7',
+      hormuz_normal: 'hormuz', opsend_jun30: 'opsend',
+      usforces_apr30: 'usforces', regime_apr30: 'regime',
+      ceasefire_trump_xi: 'ceasefire_xi', opsend_apr30: 'trump_opsend',
+    };
+    const sigId = keyToSignal[m.key];
+    if (sigId) {
+      const sig = EXIT_SIGNALS.find(s => s.id === sigId);
       if (sig) sig.pct = pct;
     }
-    // update EXIT_SIGNALS with live data
-    const sig = EXIT_SIGNALS.find(s => s.slug === m.slug);
-    if (sig) sig.pct = pct;
   });
-  // update signal bar elements after render
+  // update signal bar elements
   EXIT_SIGNALS.forEach(s => {
     const bel = document.getElementById('b-' + s.id);
     const vel = document.getElementById('p-' + s.id);
@@ -1493,10 +1506,12 @@ function updateAcctPreview() {
   }
 }
 function saveAcctSettings() {
-  acctSettings = {
-    netliq: parseFloat(document.getElementById('acct-netliq').value) || 0,
-    cash: parseFloat(document.getElementById('acct-cash').value) || 0,
-  };
+  const netliq = parseFloat(document.getElementById('acct-netliq').value);
+  const cash = parseFloat(document.getElementById('acct-cash').value);
+  if (isNaN(netliq) || netliq < 0) return alert('Net liquidation must be a positive number');
+  if (isNaN(cash)) return alert('Cash balance must be a number (negative = margin loan)');
+  if (cash < 0 && Math.abs(cash) > netliq) return alert('Margin loan cannot exceed net liquidation');
+  acctSettings = { netliq, cash };
   saveAccountSettings(acctSettings);
   render();
   closeModal();
@@ -1632,7 +1647,7 @@ function applyHormuzData(data) {
       const el = document.getElementById('v-tonnage');
       if (el) el.textContent = v.globalTonnageIdle + '%';
     }
-    document.getElementById('vessel-src').textContent = '— live from hormuztracker.com';
+    const vsrc = document.getElementById('vessel-src'); if (vsrc) vsrc.textContent = '— live from hormuztracker.com';
     // store in liveData for portfolio review
     if (v.trapped) liveData.vesselCount = v.trapped;
     if (v.transitsPerDay !== undefined) liveData.dailyTransits = parseFloat(v.transitsPerDay) || 0;

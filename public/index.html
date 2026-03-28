@@ -166,6 +166,35 @@ button:hover{background:var(--bg2);color:var(--text)}
 .tab-panel{display:none}
 .tab-panel.active{display:block}
 @media(max-width:600px){.mets,.pg,.vg{grid-template-columns:repeat(2,1fr)}.main-tab{padding:8px 12px;font-size:12px}}
+/* AI Signal Engine tab */
+.aise-modes{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
+.aise-mode{font-size:12px;padding:6px 14px;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--text2);font-weight:500;transition:all .15s}
+.aise-mode:hover{background:var(--bg);border-color:var(--border2);color:var(--text)}
+.aise-mode.active{background:var(--bg-info);color:#fff;border-color:var(--bg-info)}
+.aise-input{width:100%;font-family:inherit;font-size:13px;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;resize:vertical}
+.aise-output{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:16px 18px;min-height:200px;font-size:13px;color:var(--text2);line-height:1.7;white-space:pre-wrap;word-wrap:break-word;overflow-x:auto}
+.aise-output strong{color:var(--text);font-weight:600}
+.aise-meta{font-size:10px;color:var(--text3);margin-top:8px;display:flex;justify-content:space-between}
+.aise-loading{display:flex;align-items:center;gap:8px;padding:2rem;color:var(--text3);font-size:13px}
+.aise-loading .dot{width:8px;height:8px}
+/* Trade insights cards on homepage */
+.insights-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem}
+.insight-card{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:11px 14px;display:flex;gap:10px;align-items:flex-start}
+.insight-card.insight-action{border-left:2px solid var(--bg-success)}
+.insight-card.insight-watch{border-left:2px solid var(--bg-warning)}
+.insight-card.insight-warning{border-left:2px solid var(--bg-danger)}
+.insight-card.insight-info{border-left:2px solid var(--bg-info)}
+.insight-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+.insight-content{flex:1;min-width:0}
+.insight-title{font-size:12px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.insight-title .ticker-ref{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--bg);border:.5px solid var(--border);color:var(--text2)}
+.insight-body{font-size:11px;color:var(--text2);line-height:1.5}
+.insight-rule{font-size:9px;color:var(--text3);margin-top:3px}
+.insight-urgency{font-size:9px;font-weight:600;letter-spacing:.04em;padding:1px 5px;border-radius:3px;flex-shrink:0}
+.insight-urgency.urg-high{background:#fee2e2;color:#991b1b}
+.insight-urgency.urg-medium{background:#fef3c7;color:#854d0e}
+.insight-urgency.urg-low{background:#e0e7ff;color:#3730a3}
+@media(prefers-color-scheme:dark){.insight-urgency.urg-high{background:#450a0a;color:#fca5a5}.insight-urgency.urg-medium{background:#451a03;color:#fcd34d}.insight-urgency.urg-low{background:#1e1b4b;color:#a5b4fc}}
 </style>
 </head>
 <body>
@@ -181,6 +210,7 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div class="main-tab" onclick="switchMainTab('signals')">Signals</div>
   <div class="main-tab" onclick="switchMainTab('news')">News</div>
   <div class="main-tab" onclick="switchMainTab('markets')">Markets</div>
+  <div class="main-tab" onclick="switchMainTab('aisignal')">AI Signal</div>
 </div>
 
 <!-- ═══ HOME TAB ═══ -->
@@ -196,6 +226,11 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="review" id="review-box" style="display:none">
   <div class="review-label">Portfolio review</div>
   <div class="review-text" id="review-text">Waiting for live data...</div>
+</div>
+
+<div class="sl">Trade insights <span class="ai-tag" style="background:var(--bg-info)">AI</span> <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)">— v3.2 rules engine</span> <span style="font-size:10px;color:var(--text3);cursor:pointer" onclick="fTradeInsights()" title="Refresh insights">↻</span></div>
+<div class="insights-grid" id="insights-grid">
+  <div style="font-size:12px;color:var(--text3);padding:8px 0">Loading trade insights...</div>
 </div>
 
 <div class="sl">Daily indicators <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)">— 6 morning checks</span></div>
@@ -362,6 +397,41 @@ button:hover{background:var(--bg2);color:var(--text)}
 </div>
 
 </div><!-- /tab-markets -->
+
+<!-- ═══ AI SIGNAL TAB ═══ -->
+<div class="tab-panel" id="tab-aisignal">
+
+<div class="sl">AI Signal Engine <span class="ai-tag" style="background:var(--bg-info)">v3.2</span></div>
+<div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">
+  Run the v3.2 rules engine + trade implementation council against live market data. All outputs grounded in current trading rules with adversarial debate layer.
+</div>
+
+<div class="aise-modes">
+  <div class="aise-mode active" onclick="setAISEMode('status')" id="aise-m-status">Status Check</div>
+  <div class="aise-mode" onclick="setAISEMode('quick')" id="aise-m-quick">Quick</div>
+  <div class="aise-mode" onclick="setAISEMode('council')" id="aise-m-council">Council</div>
+  <div class="aise-mode" onclick="setAISEMode('both')" id="aise-m-both">Both</div>
+</div>
+
+<div id="aise-action-row" style="display:none;margin-bottom:10px">
+  <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Proposed trade action</label>
+  <input class="aise-input" id="aise-action" placeholder="e.g. Sell 50 GUSH at market open" style="height:auto">
+</div>
+
+<div style="margin-bottom:10px">
+  <button class="btn-primary" onclick="runAISE()" id="aise-run-btn">Run Signal Engine</button>
+  <span style="font-size:11px;color:var(--text3);margin-left:8px" id="aise-status"></span>
+</div>
+
+<div class="aise-output" id="aise-output">
+  <span style="color:var(--text3)">Select a mode and click "Run Signal Engine" to analyze current market conditions against v3.2 rules.</span>
+</div>
+<div class="aise-meta" id="aise-meta" style="display:none">
+  <span id="aise-meta-mode"></span>
+  <span id="aise-meta-time"></span>
+</div>
+
+</div><!-- /tab-aisignal -->
 
 <div class="ft">
   <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -1469,7 +1539,7 @@ function closeModal() {
 // ---- main tab navigation ----
 function switchMainTab(tab) {
   document.querySelectorAll('.main-tab').forEach((el, i) => {
-    const tabs = ['home','signals','news','markets'];
+    const tabs = ['home','signals','news','markets','aisignal'];
     el.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.tab-panel').forEach(el => {
@@ -2001,6 +2071,9 @@ async function go(){
   // AI signal: fire after data is populated (non-blocking — don't await)
   fAISignal();
 
+  // Trade insights: fire after data is populated (non-blocking)
+  fTradeInsights();
+
   const mkt = getMarketState();
   const wsLabel = hlWsLive ? ' · WS live' : '';
   const aiLabel = Object.keys(aiSignals).length ? ' · AI' : '';
@@ -2047,6 +2120,208 @@ function promptFinnhubKey() {
     window.history.replaceState({}, '', clean);
   }
 })();
+
+// ---- AI Signal Engine ----
+let aiseMode = 'status';
+const AISE_URL = '/api/ai-signal-engine';
+
+function setAISEMode(mode) {
+  aiseMode = mode;
+  document.querySelectorAll('.aise-mode').forEach(el => el.classList.remove('active'));
+  document.getElementById('aise-m-' + mode).classList.add('active');
+  document.getElementById('aise-action-row').style.display = mode === 'council' ? '' : 'none';
+}
+
+async function runAISE() {
+  const btn = document.getElementById('aise-run-btn');
+  const output = document.getElementById('aise-output');
+  const status = document.getElementById('aise-status');
+  const meta = document.getElementById('aise-meta');
+
+  const action = aiseMode === 'council' ? document.getElementById('aise-action').value.trim() : null;
+  if (aiseMode === 'council' && !action) {
+    output.innerHTML = '<span style="color:var(--danger)">Enter a proposed trade action above.</span>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  status.textContent = 'Calling Claude API...';
+  output.innerHTML = '<div class="aise-loading"><div class="dot"></div>Analyzing market data against v3.2 rules...</div>';
+
+  try {
+    const resp = await fetch(AISE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: aiseMode,
+        action,
+        liveData: {
+          wti: liveData.wti, brentYahoo: liveData.brentYahoo, btc: liveData.btc, gold: liveData.gold,
+          ust10y: liveData.ust10y, usdjpy: liveData.usdjpy,
+          ceasefire: liveData.ceasefire, opsEnd: liveData.opsEnd, hormuz: liveData.hormuz,
+          mar31Ceasefire: liveData.mar31Ceasefire, dailyTransits: liveData.dailyTransits,
+          vesselCount: liveData.vesselCount, netliq: liveData.netliq, marginUsed: liveData.marginUsed,
+        },
+        positions: pos.map(p => ({
+          ticker: p.ticker, label: p.label, type: p.type, bg: p.bg,
+          qty: p.qty, avg: p.avg, lastPrice: p.lastPrice || null,
+          pnl: (p.type==='stock' && p.lastPrice) ? Math.round((p.lastPrice-p.avg)*p.qty*100)/100 : (p.pnl||0)
+        }))
+      })
+    });
+
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    // Format output with basic markdown-like rendering
+    output.innerHTML = formatAISEOutput(data.output);
+    meta.style.display = '';
+    document.getElementById('aise-meta-mode').textContent = 'Mode: ' + data.mode + ' · Rules: ' + data.rulesVersion;
+    document.getElementById('aise-meta-time').textContent = new Date(data.generatedAt).toLocaleTimeString();
+    status.textContent = '';
+  } catch (e) {
+    output.innerHTML = '<span style="color:var(--danger)">Error: ' + e.message + '</span>';
+    status.textContent = 'Failed';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Signal Engine';
+  }
+}
+
+function formatAISEOutput(text) {
+  if (!text) return '<span style="color:var(--text3)">No output</span>';
+  // Basic formatting: bold, headers, colored signals
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^(#+)\s+(.*)$/gm, (_, h, t) => `<strong style="font-size:${16 - h.length}px">${t}</strong>`)
+    .replace(/═+/g, '<span style="color:var(--border2)">═══════════════════════════</span>')
+    .replace(/\bHOLD\b/g, '<span style="color:var(--success);font-weight:600">HOLD</span>')
+    .replace(/\bEXECUTE\b/g, '<span style="color:var(--danger);font-weight:600">EXECUTE</span>')
+    .replace(/\bTRIM\b/g, '<span style="color:var(--danger);font-weight:600">TRIM</span>')
+    .replace(/\bWATCH\b/g, '<span style="color:var(--warning);font-weight:600">WATCH</span>')
+    .replace(/\bADD\b/g, '<span style="color:var(--success);font-weight:600">ADD</span>')
+    .replace(/\bVETO\b/g, '<span style="color:var(--danger);font-weight:700">VETO</span>')
+    .replace(/\bSUPPORT\b/g, '<span style="color:var(--success);font-weight:600">SUPPORT</span>')
+    .replace(/\bOPPOSE\b/g, '<span style="color:var(--danger);font-weight:600">OPPOSE</span>')
+    .replace(/\bNEUTRAL\b/g, '<span style="color:var(--warning);font-weight:600">NEUTRAL</span>')
+    .replace(/\bSPIRAL\b/g, '<span style="color:var(--danger);font-weight:600">SPIRAL</span>')
+    .replace(/\bSTRESS\b/g, '<span style="color:var(--warning);font-weight:600">STRESS</span>')
+    .replace(/\bCRITICAL\b/g, '<span style="color:var(--danger);font-weight:600">CRITICAL</span>')
+    .replace(/[✅🟢]/g, '<span style="color:var(--success)">$&</span>')
+    .replace(/[⚠️🟡]/g, '<span style="color:var(--warning)">$&</span>')
+    .replace(/[🔴❌]/g, '<span style="color:var(--danger)">$&</span>');
+  return html;
+}
+
+// ---- Trade Insights (homepage) ----
+const INSIGHTS_URL = '/api/trade-insights';
+const INSIGHTS_INTERVAL = 600000; // 10 min
+let insightsAge = 0;
+
+async function fTradeInsights() {
+  if (!pos.length) {
+    document.getElementById('insights-grid').innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Import positions to see trade insights.</div>';
+    return;
+  }
+
+  // Skip if recently fetched (unless forced)
+  if (insightsAge && (Date.now() - insightsAge) < INSIGHTS_INTERVAL) return;
+
+  const grid = document.getElementById('insights-grid');
+  grid.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0"><span class="sh">●</span> Generating insights...</div>';
+
+  try {
+    const resp = await fetch(INSIGHTS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        liveData: {
+          wti: liveData.wti, brentYahoo: liveData.brentYahoo, btc: liveData.btc, gold: liveData.gold,
+          ust10y: liveData.ust10y, usdjpy: liveData.usdjpy,
+          ceasefire: liveData.ceasefire, opsEnd: liveData.opsEnd, hormuz: liveData.hormuz,
+          mar31Ceasefire: liveData.mar31Ceasefire, dailyTransits: liveData.dailyTransits,
+        },
+        positions: pos.map(p => ({
+          ticker: p.ticker, label: p.label, type: p.type, bg: p.bg,
+          qty: p.qty, avg: p.avg, lastPrice: p.lastPrice || null,
+        }))
+      })
+    });
+
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    if (data.insights && data.insights.length) {
+      insightsAge = Date.now();
+      renderInsights(data.insights);
+    } else {
+      grid.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">No insights generated.</div>';
+    }
+  } catch (e) {
+    // Show fallback rule-based insights
+    renderFallbackInsights();
+  }
+}
+
+function renderInsights(insights) {
+  const grid = document.getElementById('insights-grid');
+  const icons = { action: '→', watch: '◎', warning: '⚠', info: 'ℹ' };
+  grid.innerHTML = insights.map(ins => {
+    const type = ins.type || 'info';
+    const urgency = ins.urgency || 'low';
+    const icon = icons[type] || 'ℹ';
+    const tickerTag = ins.ticker ? `<span class="ticker-ref">${ins.ticker}</span>` : '';
+    return `<div class="insight-card insight-${type}">
+      <span class="insight-icon">${icon}</span>
+      <div class="insight-content">
+        <div class="insight-title">${ins.title} ${tickerTag}</div>
+        <div class="insight-body">${ins.body}</div>
+        ${ins.rule ? `<div class="insight-rule">${ins.rule}</div>` : ''}
+      </div>
+      <span class="insight-urgency urg-${urgency}">${urgency.toUpperCase()}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderFallbackInsights() {
+  // Generate basic rule-based insights without AI
+  const insights = [];
+  const ust = liveData.ust10y;
+  const oe = liveData.opsEnd;
+  const hz = liveData.hormuz;
+  const jpy = liveData.usdjpy;
+  const oil = liveData.brentYahoo || (liveData.wti ? parseFloat(liveData.wti) : null);
+
+  if (ust !== null && ust >= 4.60) {
+    insights.push({ type: 'action', urgency: 'high', title: '10Y at ' + ust.toFixed(2) + '% — ADD TLT puts', body: 'Yield has crossed the 4.60% ADD threshold. Japan doom loop accelerating.', rule: 'v3.2: ADD TLT puts ≥4.60%' });
+  } else if (ust !== null && ust >= 4.42) {
+    insights.push({ type: 'watch', urgency: 'medium', title: '10Y approaching ADD zone (' + ust.toFixed(2) + '%)', body: (4.60 - ust).toFixed(2) + '% away from TLT put ADD threshold.', rule: 'v3.2: ADD TLT ≥4.60 | SPIRAL ≥4.70' });
+  }
+
+  if (oe !== null && oe >= 75) {
+    insights.push({ type: 'warning', urgency: 'high', title: 'Ops-end Jun 30 at ' + oe + '%', body: 'Approaching 80% trim trigger. Need all 3 conditions + 24h hold.', rule: 'v3.2: EXIT at 80% held 24h' });
+  }
+
+  if (jpy !== null && oil !== null) {
+    const comp = Math.round(jpy * oil);
+    if (comp > 15500) {
+      insights.push({ type: 'warning', urgency: 'medium', title: 'USDJPY×Oil composite: ' + comp.toLocaleString(), body: 'Above 15,500 stress threshold. Japan doom loop active.', rule: 'v3.2: STRESS >15,500 | CRITICAL >155' });
+    }
+  }
+
+  const dow = new Date().getDay();
+  if (dow === 5 || dow === 6 || dow === 0 || dow === 1) {
+    insights.push({ type: 'info', urgency: 'low', title: 'TACO filter elevated', body: 'Weekend/Monday psyop window. Highest skepticism for oil-negative news.', rule: 'v3.2: Fri PM + Mon AM highest TACO risk' });
+  }
+
+  if (!insights.length) {
+    insights.push({ type: 'info', urgency: 'low', title: 'No triggers breached', body: 'All v3.2 indicators within normal ranges. Hold full size.', rule: 'v3.2 deleveraging: requires ALL 3 simultaneously' });
+  }
+
+  renderInsights(insights);
+}
 
 renderExitSignals();renderTimeline(FALLBACK_TIMELINE);render();updateSPRClock();go();setInterval(go,60000);
 </script>

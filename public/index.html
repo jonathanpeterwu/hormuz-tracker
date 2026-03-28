@@ -621,7 +621,7 @@ const EXIT_SIGNALS = [
   { id:'opsend', tier:2, label:'Ops-end Jun 30', deadline:'2026-06-30', slug:'trump-announces-end-of-military-operations-against-iran-by-june-30th-566-326-653-781', color:'var(--bg-danger)', pctClass:'dn', pct:74, impact:'high', action:'Trim trigger at 80% + physical confirm' },
   { id:'usforces', tier:2, label:'US forces enter Iran Apr 30', deadline:'2026-04-30', slug:'us-forces-enter-iran-by-april-30-899', color:'var(--bg-danger)', pctClass:'dn', pct:58, impact:'high', action:'Smart money YES — next-leg thesis' },
   { id:'regime', tier:2, label:'Iran regime falls Apr 30', deadline:'2026-04-30', slug:'will-the-iranian-regime-fall-by-april-30', color:'var(--bg-info)', pctClass:'inf', pct:7, impact:'medium', action:'Low prob, high impact if rises' },
-  { id:'ceasefire_xi', tier:2, label:'Ceasefire by May 31', deadline:'2026-05-31', slug:'us-x-iran-ceasefire-by-may-31', color:'var(--bg-warning)', pctClass:'wn', pct:53, impact:'high', action:'KEY SIGNAL — pre-Trump-Xi deal window' },
+  { id:'ceasefire_xi', tier:2, label:'Ceasefire before Trump-Xi', deadline:'2026-05-14', slug:'us-x-iran-ceasefire-before-trump-visits-china', color:'var(--bg-warning)', pctClass:'wn', pct:55, impact:'high', action:'KEY SIGNAL — 55% confirms May deal window' },
   // TIER 3 — NOISE / TRUMP BETA (weight: LOW, discounted)
   { id:'ceasefire', tier:3, label:'Ceasefire by Dec 31', deadline:'2026-12-31', slug:'us-x-iran-ceasefire-by-december-31', color:'var(--bg-success)', pctClass:'up', pct:76, impact:'low', action:'9-month cumulative — NOT imminent. NEVER trim on this.' },
   { id:'trump_opsend', tier:3, label:'Trump ops-end Apr 30', deadline:'2026-04-30', slug:'trump-announces-end-of-military-operations-against-iran-by-april-30th-753-882-164-769', color:'var(--bg-warning)', pctClass:'wn', pct:47, impact:'low', action:'Trump beta — T1 override when diverged' },
@@ -1255,6 +1255,7 @@ const PM_MARKETS=[
   {slug:'us-x-iran-ceasefire-by-april-7',         v:null,b:null, key:'ceasefire_apr7'},
   {slug:'us-x-iran-ceasefire-by-april-30',        v:null,b:null, key:'ceasefire_apr30'},
   {slug:'us-x-iran-ceasefire-by-may-31',          v:null,b:null, key:'ceasefire_may31'},
+  {slug:'us-x-iran-ceasefire-before-trump-visits-china', v:null,b:null, key:'ceasefire_trump_xi'},
   {slug:'iran-x-israelus-conflict-ends-by-june-30-813-454-138-725', v:null,b:null, key:'conflict_ends_jun30'},
   // Hormuz
   {slug:'strait-of-hormuz-traffic-returns-to-normal-by-april-30',v:'ph',b:'bh', key:'hormuz_normal'},
@@ -1280,7 +1281,7 @@ function applyPMData(pmData) {
       ceasefire_dec31: 'ceasefire', ceasefire_apr7: 'ceasefire_apr7',
       hormuz_normal: 'hormuz', opsend_jun30: 'opsend',
       usforces_apr30: 'usforces', regime_apr30: 'regime',
-      ceasefire_may31: 'ceasefire_xi', opsend_apr30: 'trump_opsend',
+      ceasefire_trump_xi: 'ceasefire_xi', opsend_apr30: 'trump_opsend',
     };
     const sigId = keyToSignal[m.key];
     if (sigId) {

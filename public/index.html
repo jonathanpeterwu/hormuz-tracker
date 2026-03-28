@@ -296,7 +296,7 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div class="pc"><div class="pl2">BTC</div><div class="pp sh" id="pbtc">—</div><div class="hl-deltas" id="dbtc"></div></div>
   <div class="pc"><div class="pl2">Gold (XAU)</div><div class="pp sh" id="pxau">—</div><div class="hl-deltas" id="dxau"></div></div>
   <div class="pc"><div class="pl2">ETH</div><div class="pp sh" id="peth">—</div><div class="hl-deltas" id="deth"></div></div>
-  <div class="pc"><div class="pl2">WTI proxy</div><div class="pp sh" id="pwti">—</div><div class="hl-deltas" id="dwti"></div></div>
+  <div class="pc"><div class="pl2">WTI crude (CL=F)</div><div class="pp sh" id="pwti">—</div><div id="pbrent" style="font-size:12px;color:var(--text3);margin-top:3px"></div><div class="hl-deltas" id="dwti"></div></div>
 </div>
 
 <div class="div"></div>
@@ -476,10 +476,12 @@ const OWNER_SEED_POSITIONS=[
 // beta = how much the stock moves per 1% move in the HL proxy
 // GUSH is 2x leveraged oil E&P, USO/OILK track crude ~1:1
 // SQQQ is -3x Nasdaq, CF/NTR correlate with commodity complex
+// NOTE: @107 is an HL perp that loosely tracks oil but is NOT WTI crude.
+// Real WTI/Brent prices come from Yahoo (CL=F, BZ=F). HL proxies used only for overnight delta estimates.
 const HL_PROXY = {
-  GUSH:  { coin: '@107', beta: 2.0 },   // 2x oil E&P vs WTI perp
-  USO:   { coin: '@107', beta: 1.0 },   // WTI crude tracker
-  OILK:  { coin: '@107', beta: 0.95 },  // roll-efficient oil ~1:1
+  GUSH:  { coin: '@107', beta: 2.0 },   // 2x oil E&P vs HL oil perp
+  USO:   { coin: '@107', beta: 1.0 },   // crude tracker vs HL oil perp
+  OILK:  { coin: '@107', beta: 0.95 },  // roll-efficient oil vs HL oil perp
   SQQQ:  { coin: 'ETH',  beta: -1.2 },  // -3x QQQ, ETH proxy for risk (inverted, dampened)
   NTR:   { coin: '@107', beta: 0.4 },   // diversified ag, lower oil beta
   CANE:  { coin: '@107', beta: 0.15 },  // sugar has weak energy correlation
@@ -994,6 +996,18 @@ function applyYahooResults(results) {
   results.forEach(q => {
     if (q.symbol === '^TNX') { liveData.ust10y = q.regularMarketPrice; return; }
     if (q.symbol === 'JPY=X') { liveData.usdjpy = q.regularMarketPrice; return; }
+    if (q.symbol === 'CL=F') {
+      liveData.wtiYahoo = q.regularMarketPrice; liveData.wti = q.regularMarketPrice;
+      const wel = document.getElementById('pwti');
+      if (wel) { wel.textContent = f(q.regularMarketPrice); wel.classList.remove('sh'); }
+      return;
+    }
+    if (q.symbol === 'BZ=F') {
+      liveData.brentYahoo = q.regularMarketPrice;
+      const bel = document.getElementById('pbrent');
+      if (bel) bel.textContent = 'Brent: ' + f(q.regularMarketPrice);
+      return;
+    }
     pos.forEach(p => {
       const sym = p.yahooTicker || p.ticker;
       if (sym === q.symbol) { p.lastPrice = q.regularMarketPrice; }
@@ -1003,7 +1017,7 @@ function applyYahooResults(results) {
 async function fYahoo(){
   setStatus('yf','pending','Yahoo...');
   const equities = pos.filter(p => p.type !== 'option' && !/\s/.test(p.ticker));
-  const symbols  = [...new Set(equities.map(p => p.yahooTicker || p.ticker)), '^TNX', 'JPY=X'];
+  const symbols  = [...new Set(equities.map(p => p.yahooTicker || p.ticker)), '^TNX', 'JPY=X', 'CL=F', 'BZ=F'];
   if (!symbols.length) { setStatus('yf','err','No equity tickers'); return false; }
   // restore from cache immediately
   const cached = cacheGet('yf');
@@ -1054,10 +1068,15 @@ function applyHLMids(mids) {
     }
   } else { liveData.gold = null; }
   liveData.btc = mids['BTC'] || null;
-  const wti=mids['@107']||mids['WTI'];
-  liveData.wti = wti || null;
+  // HL @107 perp — store separately, do NOT use as WTI price
+  liveData.hlPerp107 = mids['@107'] || mids['WTI'] || null;
+  // Prefer Yahoo CL=F for real WTI, fall back to HL perp only if Yahoo unavailable
+  if (!liveData.wti) liveData.wti = liveData.hlPerp107;
   const wel=document.getElementById('pwti');
-  if(wel){wel.textContent=wti?f(wti):'—';wel.classList.remove('sh');}
+  if(wel){
+    const wtiDisplay = liveData.wtiYahoo || liveData.hlPerp107;
+    wel.textContent=wtiDisplay?f(wtiDisplay):'—';wel.classList.remove('sh');
+  }
 }
 async function fHL(){
   setStatus('hl','pending','Hyperliquid...');
@@ -1792,33 +1811,44 @@ function updateIndicators() {
     if (ustSt) ustSt.innerHTML = ust >= 4.70 ? '<span class="dn">SPIRAL</span>' : ust >= 4.60 ? '<span class="wn">ADD TLT</span>' : '<span class="up">HOLD</span>';
   }
 
-  // 2. USDJPY × Oil
+  // 2. USDJPY × Brent composite (use Brent if available, fall back to WTI)
   const jpy = liveData.usdjpy;
-  const wti = liveData.wti ? parseFloat(liveData.wti) : null;
+  const brent = liveData.brentYahoo || null;
+  const wti = liveData.wtiYahoo || (liveData.wti ? parseFloat(liveData.wti) : null);
+  const oilForComposite = brent || wti;
+  const oilLabel = brent ? 'Brent' : 'WTI';
   const jpyEl = document.getElementById('ind-jpyoil');
   const jpySt = document.getElementById('ind-jpyoil-status');
-  if (jpyEl && jpy !== null && wti !== null) {
-    const composite = Math.round(jpy * wti);
+  if (jpyEl && jpy !== null && oilForComposite !== null) {
+    const composite = Math.round(jpy * oilForComposite);
     jpyEl.innerHTML = '<span class="' + (jpy > 155 ? 'dn' : composite > 15500 ? 'wn' : '') + '">' + composite.toLocaleString() + '</span>';
     if (jpySt) {
-      const jpyNote = 'JPY ' + jpy.toFixed(1) + ' × WTI $' + wti.toFixed(0);
+      const jpyNote = 'JPY ' + jpy.toFixed(1) + ' × ' + oilLabel + ' $' + oilForComposite.toFixed(0);
       jpySt.innerHTML = jpy > 155 ? '<span class="dn">CRITICAL — ' + jpyNote + '</span>' : composite > 15500 ? '<span class="wn">STRESS — ' + jpyNote + '</span>' : '<span style="color:var(--text3)">' + jpyNote + '</span>';
     }
   } else if (jpyEl && jpy !== null) {
     jpyEl.textContent = 'JPY ' + jpy.toFixed(1);
   }
 
-  // 3. Oil vs Range ($85 Nuttall floor / $110-115 Wright ceiling)
+  // Update Brent subtitle on Markets tab
+  const brentEl = document.getElementById('pbrent');
+  if (brentEl) brentEl.textContent = brent ? 'Brent: ' + f(brent) : '';
+
+  // 3. Oil vs Range — show both WTI and Brent
   const oilEl = document.getElementById('ind-oil');
   const oilSt = document.getElementById('ind-oil-status');
-  if (oilEl && wti !== null) {
-    const cls = wti >= 110 ? 'wn' : wti <= 90 ? 'dn' : 'up';
-    oilEl.innerHTML = '<span class="' + cls + '">$' + wti.toFixed(1) + '</span>';
+  const oilDisplay = wti || brent;
+  if (oilEl && oilDisplay !== null) {
+    const cls = oilDisplay >= 110 ? 'wn' : oilDisplay <= 90 ? 'dn' : 'up';
+    const label = wti && brent ? 'WTI $' + wti.toFixed(0) + ' · Brent $' + brent.toFixed(0) : '$' + oilDisplay.toFixed(1);
+    oilEl.innerHTML = '<span class="' + cls + '">' + label + '</span>';
     if (oilSt) {
-      if (wti >= 115) oilSt.innerHTML = '<span class="dn">ABOVE CEILING</span>';
-      else if (wti >= 110) oilSt.innerHTML = '<span class="wn">AT CAP RANGE</span>';
-      else if (wti <= 85) oilSt.innerHTML = '<span class="dn">AT/BELOW FLOOR</span>';
-      else if (wti <= 90) oilSt.innerHTML = '<span class="wn">NEAR FLOOR</span>';
+      // Use Brent for range check since thresholds are Brent-based
+      const checkPrice = brent || oilDisplay;
+      if (checkPrice >= 115) oilSt.innerHTML = '<span class="dn">ABOVE CEILING</span>';
+      else if (checkPrice >= 110) oilSt.innerHTML = '<span class="wn">AT CAP RANGE</span>';
+      else if (checkPrice <= 85) oilSt.innerHTML = '<span class="dn">AT/BELOW FLOOR</span>';
+      else if (checkPrice <= 90) oilSt.innerHTML = '<span class="wn">NEAR FLOOR</span>';
       else oilSt.innerHTML = '<span class="up">MID-RANGE</span>';
     }
   }

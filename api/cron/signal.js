@@ -279,6 +279,7 @@ const DEFAULT_POSITIONS = [
   { ticker: 'SQQQ', qty: 100, avg: 78.985, label: 'Short QQQ 3x', type: 'stock' },
   { ticker: 'NTR', qty: 40, avg: 74.815, label: 'Diversified fert.', type: 'stock' },
   { ticker: 'CANE', qty: 200, avg: 10.485, label: 'Sugar ETF', type: 'stock' },
+  { ticker: 'FRO', qty: 75, avg: 22.50, label: 'Tanker (Frontline)', type: 'stock' },
   { ticker: 'TLT Jun18 $84 Put', qty: 2, avg: 0, label: 'Bonds short', type: 'option' },
   { ticker: 'EWY Jun18 $100 Put', qty: 1, avg: 0, label: 'Korea short', type: 'option' },
   { ticker: "TSM Jan15'27 $185 Put", qty: 1, avg: 6.331, label: 'Taiwan tail', type: 'option' },

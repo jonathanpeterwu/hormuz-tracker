@@ -238,7 +238,7 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div class="ind-card"><div class="ind-label">10Y UST Yield</div><div class="ind-val" id="ind-ust">—</div><div class="ind-status" id="ind-ust-status"></div><div class="ind-detail">HOLD &lt;4.42 | ADD TLT ≥4.60 | SPIRAL ≥4.70</div></div>
   <div class="ind-card"><div class="ind-label">USDJPY × Brent</div><div class="ind-val" id="ind-jpyoil">—</div><div class="ind-status" id="ind-jpyoil-status"></div><div class="ind-detail">STRESS &gt;15,500 | CRIT &gt;155 · Japan doom loop ACTIVE</div></div>
   <div class="ind-card"><div class="ind-label">Oil vs Range</div><div class="ind-val" id="ind-oil">—</div><div class="ind-status" id="ind-oil-status"></div><div class="ind-detail">Floor $85-90 Nuttall | Ceil $110-115 Wright</div></div>
-  <div class="ind-card"><div class="ind-label">Vessel Transit</div><div class="ind-val" id="ind-vessel">—</div><div class="ind-status" id="ind-vessel-status"></div><div class="ind-detail">HOLD &lt;10 | WATCH 10-19 | TRIM PREP 20+ (sustained 3d)</div></div>
+  <div class="ind-card"><div class="ind-label">Vessel Transit</div><div class="ind-val" id="ind-vessel">—</div><div class="ind-status" id="ind-vessel-status"></div><div class="ind-detail">HOLD &lt;10 | WATCH 10-19 | TRIM PREP 20+ (sustained 3d) · incl. Pakistan +2/day</div></div>
   <div class="ind-card"><div class="ind-label">Apr 7 Ceasefire</div><div class="ind-val" id="ind-mar31">—</div><div class="ind-status" id="ind-mar31-status"></div><div class="ind-detail">FLAG 40% | STAGE 50% | TRIM 60% · $2M insider cluster</div></div>
   <div class="ind-card"><div class="ind-label">DB Pressure + TACO</div><div class="ind-val" id="ind-trump">—</div><div class="ind-status" id="ind-trump-status"></div><div class="ind-detail">RECORD HIGH = psyop filter MAX · Declining = real deal</div></div>
 </div>
@@ -339,8 +339,16 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="vg" id="vessel-grid">
   <div class="vc"><div class="vn dn" id="v-trapped">2,500</div><div class="vd">Trapped inside Gulf</div></div>
   <div class="vc"><div class="vn wn" id="v-waiting">400</div><div class="vd">Waiting outside strait</div></div>
-  <div class="vc"><div class="vn fl" id="v-transit">~1</div><div class="vd">Transiting per day</div></div>
+  <div class="vc"><div class="vn fl" id="v-transit">~7</div><div class="vd">Transiting per day</div></div>
   <div class="vc"><div class="vn fl" id="v-tonnage">5%</div><div class="vd">Global tonnage idle</div></div>
+</div>
+<div id="transit-breakdown" style="margin:6px 0 0;padding:8px 12px;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);font-size:12px;color:var(--text2);display:none">
+  <div style="font-weight:600;margin-bottom:4px;color:var(--text1)">Transit sources (~<span id="tb-total">9</span>/day)</div>
+  <div style="display:flex;gap:16px">
+    <span>Iran toll booth (IRGC corridor): <strong id="tb-iran">~5</strong>/day</span>
+    <span>Pakistan deal (FM Dar): <strong id="tb-pak" style="color:var(--warning)">+2</strong>/day</span>
+  </div>
+  <div style="margin-top:4px;font-size:11px;color:var(--text3)">Pakistan bilateral = non-Iranian transits via negotiated corridor. Trickle NOT reopening.</div>
 </div>
 
 <div class="div"></div>
@@ -1717,7 +1725,20 @@ function applyHormuzData(data) {
       const el = document.getElementById('v-tonnage');
       if (el) el.textContent = v.globalTonnageIdle + '%';
     }
-    const vsrc = document.getElementById('vessel-src'); if (vsrc) vsrc.textContent = '— live from hormuztracker.com';
+    // Show transit source breakdown (Pakistan deal + Iran toll booth)
+    if (v.breakdown) {
+      const bd = document.getElementById('transit-breakdown');
+      if (bd) {
+        bd.style.display = 'block';
+        const tbTotal = document.getElementById('tb-total');
+        const tbIran = document.getElementById('tb-iran');
+        const tbPak = document.getElementById('tb-pak');
+        if (tbTotal) tbTotal.textContent = v.breakdown.total;
+        if (tbIran) tbIran.textContent = '~' + v.breakdown.iranTollBooth;
+        if (tbPak) tbPak.textContent = '+' + v.breakdown.pakistanDeal;
+      }
+    }
+    const vsrc = document.getElementById('vessel-src'); if (vsrc) vsrc.textContent = '— live from hormuztracker.com + Pakistan deal';
     // store in liveData for portfolio review
     if (v.trapped) liveData.vesselCount = v.trapped;
     if (v.transitsPerDay !== undefined) liveData.dailyTransits = parseFloat(v.transitsPerDay) || 0;

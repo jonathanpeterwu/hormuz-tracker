@@ -14,6 +14,22 @@ export default async function handler(req, res) {
     const vessels = parseVessels(html);
     const pipelines = parsePipelines(html);
 
+    // Pakistan deal: 2/day non-Iranian transits via bilateral arrangement
+    // Source: FM Dar confirmation + Vance/Islamabad format discussions
+    vessels.pakistanDeal = {
+      nonIranianPerDay: 2,
+      source: 'Pakistan bilateral deal (FM Dar confirmed)',
+      note: 'Adds ~2/day non-Iranian transits via Pakistan-negotiated corridor'
+    };
+    // Compute total estimate: base transits + Pakistan deal contribution
+    const baseTransits = vessels.transitsPerDay || 7;
+    vessels.totalEstimate = baseTransits;
+    vessels.breakdown = {
+      iranTollBooth: Math.max(0, baseTransits - 2),
+      pakistanDeal: 2,
+      total: baseTransits
+    };
+
     res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=1200');
     return res.status(200).json({ timeline, vessels, pipelines });
   } catch (e) {

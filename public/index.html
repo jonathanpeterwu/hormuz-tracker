@@ -318,7 +318,7 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="news-list" id="news-list"><div style="font-size:12px;color:var(--text3)">Loading headlines...</div></div>
 
 <div class="div"></div>
-<div class="sl">Disruption timeline <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="tl-label">— from hormuztracker.com</span></div>
+<div class="sl">Disruption timeline <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="tl-label">— from hormuztracker.com + worldwarwatcher.com</span></div>
 <div class="tl-list" id="tl-list"><div style="font-size:12px;color:var(--text3)">Loading timeline...</div></div>
 
 </div><!-- /tab-news -->
@@ -456,6 +456,7 @@ button:hover{background:var(--bg2);color:var(--text)}
     <div class="apill"><div class="sdot sdot-pending" id="dot-pm"></div><span id="lbl-pm">Polymarket</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-nw"></div><span id="lbl-nw">News</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-hz"></div><span id="lbl-hz">Hormuz</span></div>
+    <div class="apill"><div class="sdot sdot-pending" id="dot-ww"></div><span id="lbl-ww">WarWatcher</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-ai"></div><span id="lbl-ai">AI Signal</span></div>
   </div>
   <div class="ts" id="lts">Not yet refreshed</div>
@@ -526,6 +527,7 @@ const HL_URL = '/api/hyperliquid';
 const PM_URL = '/api/polymarket';
 const NW_URL = '/api/news';
 const HZ_URL = '/api/hormuz';
+const WW_URL = '/api/warwatcher';
 const HL_WS_URL = 'wss://api.hyperliquid.xyz/ws';
 const FH_WS_BASE = 'wss://ws.finnhub.io?token=';
 // Finnhub free API key — get yours at https://finnhub.io/register
@@ -1416,7 +1418,7 @@ async function fPM(){
 }
 
 // ---- live data store for review ----
-let liveData = { ceasefire: null, opsEnd: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null, vesselCount: null, dailyTransits: null, mar31Ceasefire: null, ust10y: null, usdjpy: null, netliq: null, marginUsed: null, marginRate: null };
+let liveData = { ceasefire: null, opsEnd: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null, vesselCount: null, dailyTransits: null, mar31Ceasefire: null, ust10y: null, usdjpy: null, netliq: null, marginUsed: null, marginRate: null, wwMaritimeHeadlines: null };
 // restore liveData from cache on load
 try {
   const ld = localStorage.getItem('hc_liveData');
@@ -1738,7 +1740,29 @@ function applyHormuzData(data) {
         if (tbPak) tbPak.textContent = '+' + v.breakdown.pakistanDeal;
       }
     }
-    const vsrc = document.getElementById('vessel-src'); if (vsrc) vsrc.textContent = '— live from hormuztracker.com + Pakistan deal';
+    // Show warwatcher maritime intel if available
+    if (v.warwatcher) {
+      const ww = v.warwatcher;
+      if (ww.trafficDrop) {
+        const bd = document.getElementById('transit-breakdown');
+        if (bd) {
+          const existing = bd.querySelector('.ww-intel');
+          if (!existing) {
+            const div = document.createElement('div');
+            div.className = 'ww-intel';
+            div.style.cssText = 'margin-top:4px;font-size:11px;color:var(--text3)';
+            let txt = 'WorldWarWatcher: traffic down ~' + ww.trafficDrop + '% from pre-war (' + ww.preWarRate + '/day).';
+            if (ww.tollPrice) txt += ' Toll: ~$' + ww.tollPrice + '/voyage.';
+            if (ww.corridorStatus) txt += ' ' + ww.corridorStatus + '.';
+            if (ww.bypassDisruptions.length) txt += ' ⚠️ Bypass disruption: ' + ww.bypassDisruptions[0];
+            div.textContent = txt;
+            bd.appendChild(div);
+          }
+        }
+      }
+    }
+    const srcList = (data.sources || ['hormuztracker.com']).join(' + ');
+    const vsrc = document.getElementById('vessel-src'); if (vsrc) vsrc.textContent = '— live from ' + srcList;
     // store in liveData for portfolio review
     if (v.trapped) liveData.vesselCount = v.trapped;
     if (v.transitsPerDay !== undefined) liveData.dailyTransits = parseFloat(v.transitsPerDay) || 0;
@@ -1771,11 +1795,33 @@ function renderTimeline(events) {
   const el = document.getElementById('tl-list');
   if (!events.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3)">No timeline data</div>'; return; }
   const maxDay = Math.max(...events.map(e => e.day));
+  const sources = new Set(events.map(e => e.source).filter(Boolean));
   el.innerHTML = events.map(e => {
     const isRecent = e.day >= maxDay - 2;
-    return `<div class="tl-item"><span class="tl-day${isRecent ? ' recent' : ''}">Day ${e.day}</span><span class="tl-date">${e.date}</span><span class="tl-text">${e.headline}</span></div>`;
+    const srcBadge = e.source === 'worldwarwatcher.com' ? '<span style="font-size:9px;padding:1px 4px;background:var(--bg3);border-radius:3px;color:var(--text3);margin-left:4px">WW</span>' : '';
+    const catBadge = e.category ? '<span style="font-size:9px;padding:1px 4px;background:var(--bg2);border-radius:3px;color:var(--text3);margin-left:4px">' + e.category + '</span>' : '';
+    return `<div class="tl-item"><span class="tl-day${isRecent ? ' recent' : ''}">Day ${e.day}</span><span class="tl-date">${e.date}</span><span class="tl-text">${e.headline}${srcBadge}${catBadge}</span></div>`;
   }).join('');
-  document.getElementById('tl-label').textContent = '— Day ' + maxDay + ' · hormuztracker.com';
+  const srcLabel = sources.size > 1 ? 'hormuztracker.com + worldwarwatcher.com' : (sources.values().next().value || 'hormuztracker.com');
+  document.getElementById('tl-label').textContent = '— Day ' + maxDay + ' · ' + srcLabel;
+}
+
+// ---- WorldWarWatcher (standalone status check) ----
+async function fWarWatcher(){
+  setStatus('ww','pending','WarWatcher...');
+  try {
+    const data = await fetch(WW_URL).then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
+    const count = data.totalEntries || 0;
+    const cats = data.categories || {};
+    const catStr = Object.entries(cats).map(([k,v]) => k + ':' + v).join(' ');
+    setStatus('ww','ok','WarWatcher  | ' + count + ' events · ' + catStr);
+    // Store maritime headlines for AI signal context
+    if (data.maritime && data.maritime.headlines) {
+      liveData.wwMaritimeHeadlines = data.maritime.headlines;
+    }
+  } catch(e) {
+    setStatus('ww','err','WarWatcher  | ' + e.message);
+  }
 }
 
 // ---- News headlines ----
@@ -2058,8 +2104,9 @@ async function go(){
   setStatus('pm','pending','Polymarket...');
   setStatus('nw','pending','News...');
   setStatus('hz','pending','Hormuz...');
+  setStatus('ww','pending','WarWatcher...');
 
-  const fetches = [fPM(), fNews(), fHormuz()];
+  const fetches = [fPM(), fNews(), fHormuz(), fWarWatcher()];
 
   // Use WebSocket for Hyperliquid if connected, otherwise HTTP poll
   const hlWsLive = hlWs && hlWs.readyState === 1;

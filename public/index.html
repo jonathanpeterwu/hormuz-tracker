@@ -238,7 +238,7 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div class="ind-card"><div class="ind-label">10Y UST Yield</div><div class="ind-val" id="ind-ust">—</div><div class="ind-status" id="ind-ust-status"></div><div class="ind-detail">HOLD &lt;4.42 | ADD TLT ≥4.60 | SPIRAL ≥4.70</div></div>
   <div class="ind-card"><div class="ind-label">USDJPY × Brent</div><div class="ind-val" id="ind-jpyoil">—</div><div class="ind-status" id="ind-jpyoil-status"></div><div class="ind-detail">STRESS &gt;15,500 | CRIT &gt;155 · Japan doom loop ACTIVE</div></div>
   <div class="ind-card"><div class="ind-label">Oil vs Range</div><div class="ind-val" id="ind-oil">—</div><div class="ind-status" id="ind-oil-status"></div><div class="ind-detail">Floor $85-90 Nuttall | Ceil $110-115 Wright</div></div>
-  <div class="ind-card"><div class="ind-label">Vessel Transit</div><div class="ind-val" id="ind-vessel">—</div><div class="ind-status" id="ind-vessel-status"></div><div class="ind-detail">HOLD &lt;10 | WATCH 10-19 | TRIM PREP 20+ (sustained 3d)</div></div>
+  <div class="ind-card"><div class="ind-label">Vessel Transit</div><div class="ind-val" id="ind-vessel">—</div><div class="ind-status" id="ind-vessel-status"></div><div class="ind-detail">HOLD &lt;10 | WATCH 10-19 | TRIM PREP 20+ (sustained 3d) · incl. Pakistan +2/day</div></div>
   <div class="ind-card"><div class="ind-label">Apr 7 Ceasefire</div><div class="ind-val" id="ind-mar31">—</div><div class="ind-status" id="ind-mar31-status"></div><div class="ind-detail">FLAG 40% | STAGE 50% | TRIM 60% · $2M insider cluster</div></div>
   <div class="ind-card"><div class="ind-label">DB Pressure + TACO</div><div class="ind-val" id="ind-trump">—</div><div class="ind-status" id="ind-trump-status"></div><div class="ind-detail">RECORD HIGH = psyop filter MAX · Declining = real deal</div></div>
 </div>
@@ -318,7 +318,7 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="news-list" id="news-list"><div style="font-size:12px;color:var(--text3)">Loading headlines...</div></div>
 
 <div class="div"></div>
-<div class="sl">Disruption timeline <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="tl-label">— from hormuztracker.com</span></div>
+<div class="sl">Disruption timeline <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)" id="tl-label">— from hormuztracker.com + worldwarwatcher.com</span></div>
 <div class="tl-list" id="tl-list"><div style="font-size:12px;color:var(--text3)">Loading timeline...</div></div>
 
 </div><!-- /tab-news -->
@@ -339,8 +339,16 @@ button:hover{background:var(--bg2);color:var(--text)}
 <div class="vg" id="vessel-grid">
   <div class="vc"><div class="vn dn" id="v-trapped">2,500</div><div class="vd">Trapped inside Gulf</div></div>
   <div class="vc"><div class="vn wn" id="v-waiting">400</div><div class="vd">Waiting outside strait</div></div>
-  <div class="vc"><div class="vn fl" id="v-transit">~1</div><div class="vd">Transiting per day</div></div>
+  <div class="vc"><div class="vn fl" id="v-transit">~7</div><div class="vd">Transiting per day</div></div>
   <div class="vc"><div class="vn fl" id="v-tonnage">5%</div><div class="vd">Global tonnage idle</div></div>
+</div>
+<div id="transit-breakdown" style="margin:6px 0 0;padding:8px 12px;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);font-size:12px;color:var(--text2);display:none">
+  <div style="font-weight:600;margin-bottom:4px;color:var(--text1)">Transit sources (~<span id="tb-total">9</span>/day)</div>
+  <div style="display:flex;gap:16px">
+    <span>Iran toll booth (IRGC corridor): <strong id="tb-iran">~5</strong>/day</span>
+    <span>Pakistan deal (FM Dar): <strong id="tb-pak" style="color:var(--warning)">+2</strong>/day</span>
+  </div>
+  <div style="margin-top:4px;font-size:11px;color:var(--text3)">Pakistan bilateral = non-Iranian transits via negotiated corridor. Trickle NOT reopening.</div>
 </div>
 
 <div class="div"></div>
@@ -448,6 +456,7 @@ button:hover{background:var(--bg2);color:var(--text)}
     <div class="apill"><div class="sdot sdot-pending" id="dot-pm"></div><span id="lbl-pm">Polymarket</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-nw"></div><span id="lbl-nw">News</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-hz"></div><span id="lbl-hz">Hormuz</span></div>
+    <div class="apill"><div class="sdot sdot-pending" id="dot-ww"></div><span id="lbl-ww">WarWatcher</span></div>
     <div class="apill"><div class="sdot sdot-pending" id="dot-ai"></div><span id="lbl-ai">AI Signal</span></div>
   </div>
   <div class="ts" id="lts">Not yet refreshed</div>
@@ -1408,7 +1417,7 @@ async function fPM(){
 }
 
 // ---- live data store for review ----
-let liveData = { ceasefire: null, opsEnd: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null, vesselCount: null, dailyTransits: null, mar31Ceasefire: null, ust10y: null, usdjpy: null, netliq: null, marginUsed: null, marginRate: null };
+let liveData = { ceasefire: null, opsEnd: null, hormuz: null, wti: null, gold: null, btc: null, totalPnl: null, vesselCount: null, dailyTransits: null, mar31Ceasefire: null, ust10y: null, usdjpy: null, netliq: null, marginUsed: null, marginRate: null, wwMaritimeHeadlines: null };
 // restore liveData from cache on load
 try {
   const ld = localStorage.getItem('hc_liveData');
@@ -1717,7 +1726,42 @@ function applyHormuzData(data) {
       const el = document.getElementById('v-tonnage');
       if (el) el.textContent = v.globalTonnageIdle + '%';
     }
-    const vsrc = document.getElementById('vessel-src'); if (vsrc) vsrc.textContent = '— live from hormuztracker.com';
+    // Show transit source breakdown (Pakistan deal + Iran toll booth)
+    if (v.breakdown) {
+      const bd = document.getElementById('transit-breakdown');
+      if (bd) {
+        bd.style.display = 'block';
+        const tbTotal = document.getElementById('tb-total');
+        const tbIran = document.getElementById('tb-iran');
+        const tbPak = document.getElementById('tb-pak');
+        if (tbTotal) tbTotal.textContent = v.breakdown.total;
+        if (tbIran) tbIran.textContent = '~' + v.breakdown.iranTollBooth;
+        if (tbPak) tbPak.textContent = '+' + v.breakdown.pakistanDeal;
+      }
+    }
+    // Show warwatcher maritime intel if available
+    if (v.warwatcher) {
+      const ww = v.warwatcher;
+      if (ww.trafficDrop) {
+        const bd = document.getElementById('transit-breakdown');
+        if (bd) {
+          const existing = bd.querySelector('.ww-intel');
+          if (!existing) {
+            const div = document.createElement('div');
+            div.className = 'ww-intel';
+            div.style.cssText = 'margin-top:4px;font-size:11px;color:var(--text3)';
+            let txt = 'WorldWarWatcher: traffic down ~' + ww.trafficDrop + '% from pre-war (' + ww.preWarRate + '/day).';
+            if (ww.tollPrice) txt += ' Toll: ~$' + ww.tollPrice + '/voyage.';
+            if (ww.corridorStatus) txt += ' ' + ww.corridorStatus + '.';
+            if (ww.bypassDisruptions.length) txt += ' ⚠️ Bypass disruption: ' + ww.bypassDisruptions[0];
+            div.textContent = txt;
+            bd.appendChild(div);
+          }
+        }
+      }
+    }
+    const srcList = (data.sources || ['hormuztracker.com']).join(' + ');
+    const vsrc = document.getElementById('vessel-src'); if (vsrc) vsrc.textContent = '— live from ' + srcList;
     // store in liveData for portfolio review
     if (v.trapped) liveData.vesselCount = v.trapped;
     if (v.transitsPerDay !== undefined) liveData.dailyTransits = parseFloat(v.transitsPerDay) || 0;
@@ -1745,16 +1789,34 @@ function applyHormuzData(data) {
   if (data.timeline && data.timeline.length) {
     renderTimeline(data.timeline);
   }
+
+  // Update WarWatcher status pill from merged response
+  if (data.warwatcher) {
+    const wwd = data.warwatcher;
+    const count = wwd.totalEntries || 0;
+    const cats = wwd.categories || {};
+    const catStr = Object.entries(cats).map(([k,v]) => k + ':' + v).join(' ');
+    setStatus('ww','ok','WarWatcher  | ' + count + ' events · ' + catStr);
+    if (wwd.maritime && wwd.maritime.headlines) {
+      liveData.wwMaritimeHeadlines = wwd.maritime.headlines;
+    }
+  } else if (data.sources && !data.sources.includes('worldwarwatcher.com')) {
+    setStatus('ww','err','WarWatcher  | offline');
+  }
 }
 function renderTimeline(events) {
   const el = document.getElementById('tl-list');
   if (!events.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3)">No timeline data</div>'; return; }
   const maxDay = Math.max(...events.map(e => e.day));
+  const sources = new Set(events.map(e => e.source).filter(Boolean));
   el.innerHTML = events.map(e => {
     const isRecent = e.day >= maxDay - 2;
-    return `<div class="tl-item"><span class="tl-day${isRecent ? ' recent' : ''}">Day ${e.day}</span><span class="tl-date">${e.date}</span><span class="tl-text">${e.headline}</span></div>`;
+    const srcBadge = e.source === 'worldwarwatcher.com' ? '<span style="font-size:9px;padding:1px 4px;background:var(--bg3);border-radius:3px;color:var(--text3);margin-left:4px">WW</span>' : '';
+    const catBadge = e.category ? '<span style="font-size:9px;padding:1px 4px;background:var(--bg2);border-radius:3px;color:var(--text3);margin-left:4px">' + e.category + '</span>' : '';
+    return `<div class="tl-item"><span class="tl-day${isRecent ? ' recent' : ''}">Day ${e.day}</span><span class="tl-date">${e.date}</span><span class="tl-text">${e.headline}${srcBadge}${catBadge}</span></div>`;
   }).join('');
-  document.getElementById('tl-label').textContent = '— Day ' + maxDay + ' · hormuztracker.com';
+  const srcLabel = sources.size > 1 ? 'hormuztracker.com + worldwarwatcher.com' : (sources.values().next().value || 'hormuztracker.com');
+  document.getElementById('tl-label').textContent = '— Day ' + maxDay + ' · ' + srcLabel;
 }
 
 // ---- News headlines ----

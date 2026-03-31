@@ -24,8 +24,11 @@ export default async function handler(req, res) {
   const vessels = ht ? ht.vessels : {};
   if (ww && ww.maritime) {
     vessels.warwatcher = ww.maritime;
-    // If hormuztracker doesn't have transit rate, use warwatcher's
-    if (!vessels.transitsPerDay && ww.maritime.latestTransitRate) {
+    // If hormuztracker doesn't have transit rate, use warwatcher's daily rate
+    // IMPORTANT: warwatcher latestTransitRate is only valid if ≤20/day.
+    // Higher numbers (e.g. 150) are monthly totals or stalled vessel counts,
+    // NOT daily transit rates. BBC Verify confirmed rate is 5-6/day.
+    if (!vessels.transitsPerDay && ww.maritime.latestTransitRate && ww.maritime.latestTransitRate <= 20) {
       vessels.transitsPerDay = ww.maritime.latestTransitRate;
     }
   }
@@ -188,12 +191,34 @@ function parseAtomFeed(xml) {
 function extractMaritimeIntel(entries) {
   const intel = {
     latestTransitRate: null, preWarRate: 138, trafficDrop: null,
-    tollPrice: null, corridorStatus: null, bypassDisruptions: [], headlines: [],
+    tollPrice: null, corridorStatus: null, bypassDisruptions: [],
+    stalledVessels: null, headlines: [],
   };
   for (const e of entries) {
     const text = e.title + ' ' + (e.summary || '');
-    const rateMatch = text.match(/(\d+)\s*(?:ships?\s+)?transit/i);
-    if (rateMatch && !intel.latestTransitRate) intel.latestTransitRate = parseInt(rateMatch[1]);
+
+    // CRITICAL: "~150 ships transited in March" = total stalled for the MONTH
+    // (one normal day's volume), NOT a daily transit rate.
+    // BBC Verify: actual daily rate is 5-6/day vs 138 pre-war.
+    // Only match explicit "per day" or "/day" patterns for daily rate.
+    const dailyRateMatch = text.match(/(\d+)\s*(?:ships?\s+)?(?:per|\/)\s*day/i);
+    if (dailyRateMatch && !intel.latestTransitRate) {
+      const rate = parseInt(dailyRateMatch[1]);
+      // Sanity: daily rate during blockade cannot exceed ~30; higher = misparse
+      if (rate <= 30) intel.latestTransitRate = rate;
+    }
+
+    // BBC Verify pattern: "5-6/day vs 138 pre-war"
+    const bbcMatch = text.match(/(\d+)[-–](\d+)\s*\/\s*day/i);
+    if (bbcMatch && !intel.latestTransitRate) {
+      intel.latestTransitRate = Math.round((parseInt(bbcMatch[1]) + parseInt(bbcMatch[2])) / 2);
+    }
+
+    // Stalled/stranded vessels — monthly totals, NOT daily rates
+    const stalledMatch = text.match(/(\d+)\s*(?:freight\s+)?ships?\s+(?:including|stalled|stranded|stuck)/i)
+      || text.match(/~?(\d+)\s*(?:ships?\s+)?transit(?:ed)?\s+in\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i);
+    if (stalledMatch) intel.stalledVessels = parseInt(stalledMatch[1]);
+
     const dropMatch = text.match(/(?:traffic|volume)\s+down\s+(\d+)%/i);
     if (dropMatch) intel.trafficDrop = parseInt(dropMatch[1]);
     const tollMatch = text.match(/\$(\d+(?:\.\d+)?)\s*M?\s*(?:per\s+voyage|toll)/i);
@@ -206,6 +231,7 @@ function extractMaritimeIntel(entries) {
     }
     intel.headlines.push({ day: e.day, date: e.date, title: e.title, category: e.category });
   }
+  // BBC Verify: 5-6/day vs 138 pre-war = ~96% drop
   if (!intel.trafficDrop && intel.latestTransitRate) {
     intel.trafficDrop = Math.round((1 - intel.latestTransitRate / intel.preWarRate) * 100);
   }

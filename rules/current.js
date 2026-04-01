@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const CURRENT_VERSION = 'v3.2';
+const CURRENT_VERSION = 'v3.4';
 
 export const rulesVersion = CURRENT_VERSION;
 export const rules = readFileSync(join(__dirname, `${CURRENT_VERSION}.md`), 'utf-8');

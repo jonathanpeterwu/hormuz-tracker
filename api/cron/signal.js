@@ -198,8 +198,8 @@ async function generateSignals(apiKey, positions, liveData) {
     const { fileURLToPath } = await import('node:url');
     const { dirname, join } = await import('node:path');
     const dir = dirname(fileURLToPath(import.meta.url));
-    rules = readFileSync(join(dir, '../../rules/v3.2.md'), 'utf-8');
-    rulesVersion = 'v3.2';
+    rules = readFileSync(join(dir, '../../rules/v3.4.md'), 'utf-8');
+    rulesVersion = 'v3.4';
   }
 
   const context = `

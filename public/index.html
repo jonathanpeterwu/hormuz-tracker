@@ -228,7 +228,7 @@ button:hover{background:var(--bg2);color:var(--text)}
   <div class="review-text" id="review-text">Waiting for live data...</div>
 </div>
 
-<div class="sl">Trade insights <span class="ai-tag" style="background:var(--bg-info)">AI</span> <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)">— v3.4 rules engine</span> <span style="font-size:10px;color:var(--text3);cursor:pointer" onclick="fTradeInsights()" title="Refresh insights">↻</span></div>
+<div class="sl">Trade insights <span class="ai-tag" style="background:var(--bg-info)">AI</span> <span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--text3)">— v3.5 rules engine</span> <span style="font-size:10px;color:var(--text3);cursor:pointer" onclick="fTradeInsights()" title="Refresh insights">↻</span></div>
 <div class="insights-grid" id="insights-grid">
   <div style="font-size:12px;color:var(--text3);padding:8px 0">Loading trade insights...</div>
 </div>
@@ -283,24 +283,23 @@ button:hover{background:var(--bg2);color:var(--text)}
 </div>
 
 <div class="div"></div>
-<div class="sl">Exit triggers — v3.4 rules (all 3 required simultaneously)</div>
+<div class="sl">Exit triggers — v3.5 rules (all 3 original + 2 of 3 TACO-proof)</div>
 <div class="tb">
-  <div class="tr2"><div class="ttn">1</div><div class="ttt"><strong>Oil -10%+ intraday</strong> (raised threshold filters Trump noise). NOT -5% on a Trump post.</div></div>
-  <div class="tr2"><div class="ttn">2</div><div class="ttt"><strong>Physical confirmation:</strong> non-Iranian transits >20 SUSTAINED 3+ DAYS (single-day spikes = AIS spoofing noise) OR Hormuz normalization Apr 15 PM crosses 40%.</div></div>
-  <div class="tr2"><div class="ttn">3</div><div class="ttt"><strong>Ops-end Jun 30 ≥80%</strong> held 24h AND Iran mil vs Israel <70%. Primary PM trim trigger.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--danger)">→</div><div class="ttt"><strong>On trigger (all 3 + no vetoes):</strong> TRIM 50% OIL — GUSH sell 125 (trading), USO sell 50, OILK sell 25. HSA GUSH follows Apr 6 deadline only.</div></div>
+  <div class="tr2"><div class="ttn">1</div><div class="ttt"><strong>Oil -10%+ intraday</strong> (NOT -5% on a Trump post).</div></div>
+  <div class="tr2"><div class="ttn">2</div><div class="ttt"><strong>Vessels >20 sustained 3d</strong> + Western commercial ships present.</div></div>
+  <div class="tr2"><div class="ttn">3</div><div class="ttt"><strong>Ops-end Jun 30 ≥80%</strong> held 24h.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--warning)">+</div><div class="ttt"><strong>TACO-proof (2 of 3):</strong> Signal A &lt;0.5% AND/OR Signal B >30/day AND/OR Signal C &lt;$5.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--danger)">→</div><div class="ttt"><strong>On trigger:</strong> GUSH sell 200 (keep 200), USO sell 62 (keep 63), OILK sell 100 (keep 100). 50% cash paydown, 25% GLD (if DXY &lt;103), 25% dry powder.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--danger)">⛔</div><div class="ttt"><strong>TACO AUTO-VETO:</strong> Trump verbal + Iran denies + vessels unchanged + PM unchanged → HOLD. Overrides ALL trim signals.</div></div>
   <div class="tr2"><div class="ttn">4</div><div class="ttt"><strong>Forced liquidation:</strong> oil + BTC + SOX all -10%+ same session + VIX >40 → trim 30% only, 25% cash, wait 72h. Cascade ≠ thesis death.</div></div>
-  <div class="tr2"><div class="ttn">5</div><div class="ttt">GUSH +40–50% from entry → aggressive trim zone. USO $138–142 trim ⅓. FRO: hold for June dividend, sell only if Hormuz norm Apr 15 >40%.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--success)">⛽</div><div class="ttt"><strong>SPR swap ceiling:</strong> Wright rolling swap at $110-115. NOT a depleting reserve. Does NOT block trim signals.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--text3)">—</div><div class="ttt"><strong>Trump psyop filter:</strong> Apr 6 pause extension fits pattern exactly. Fri/Sat escalation → Mon de-escalation. Filter active.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--success)">✓</div><div class="ttt"><strong>Structural holds:</strong> SQQQ, NTR, TLT puts, FRO, CANE — survive ceasefire, do NOT trim.</div></div>
 </div>
 
 <div class="div"></div>
-<div class="sl">Forcing function calendar (v3.4)</div>
+<div class="sl">Forcing function calendar (v3.5)</div>
 <div class="tb" style="border-left-color:var(--info)">
-  <div class="tr2"><div class="ttn" style="color:var(--danger)">Apr 6</div><div class="ttt"><strong>Trump energy pause expires 8pm ET.</strong> Most likely: another extension. Iran 5 conditions include Hormuz sovereignty = US nonstarter. Vance/Islamabad talks format under discussion.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--warning)">Apr 1-6</div><div class="ttt">@PolymarketHistory daily — insider wallet clusters appear 2-3 days before Trump announcements (confirmed x3). EARLIEST WARNING SIGNAL.</div></div>
-  <div class="tr2"><div class="ttn" style="color:var(--warning)">Apr 7</div><div class="ttt">Ceasefire PM resolves. $2M insider cluster: NO ceasefire + YES US forces Iran Apr 30. Thresholds: 40% flag · 50% stage · 60% TRIM.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--danger)">Apr 6</div><div class="ttt"><strong>ENERGY PAUSE EXPIRES 8pm ET — FULL REVIEW.</strong> Most likely: extension (TACO x9). Possible: Kharg strike = ADD oil signal. Check signals 8:30am Apr 7.</div></div>
+  <div class="tr2"><div class="ttn" style="color:var(--warning)">Apr 7</div><div class="ttt">Ceasefire PM resolves at 2% — <strong>war confirmed</strong>. $2M insider cluster: NO ceasefire + YES US forces Iran Apr 30.</div></div>
   <div class="tr2"><div class="ttn" style="color:var(--info)">Apr 27</div><div class="ttt"><strong>NPT Review Conference</strong> opens NYC (runs Apr 27–May 22). Iran nuclear leverage peaks at UN. NPT exit threat = ADD oil.</div></div>
   <div class="tr2"><div class="ttn" style="color:var(--danger)">Apr 28</div><div class="ttt"><strong>BOJ policy meeting</strong> — 25bp hike to 1% priced in. Japan doom loop accelerant. ADD TLT puts if 10Y ≥4.60%.</div></div>
   <div class="tr2"><div class="ttn" style="color:var(--danger)">Apr 30</div><div class="ttt">Smart money bet: US forces enter Iran. HSA GUSH→FRO rotation deadline. Primary next-leg escalation thesis.</div></div>
@@ -410,9 +409,9 @@ button:hover{background:var(--bg2);color:var(--text)}
 <!-- ═══ AI SIGNAL TAB ═══ -->
 <div class="tab-panel" id="tab-aisignal">
 
-<div class="sl">AI Signal Engine <span class="ai-tag" style="background:var(--bg-info)">v3.4</span></div>
+<div class="sl">AI Signal Engine <span class="ai-tag" style="background:var(--bg-info)">v3.5</span></div>
 <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">
-  Run the v3.4 rules engine + trade implementation council against live market data. All outputs grounded in current trading rules with adversarial debate layer.
+  Run the v3.5 rules engine + trade implementation council against live market data. All outputs grounded in current trading rules with adversarial debate layer.
 </div>
 
 <div class="aise-modes">
@@ -433,7 +432,7 @@ button:hover{background:var(--bg2);color:var(--text)}
 </div>
 
 <div class="aise-output" id="aise-output">
-  <span style="color:var(--text3)">Select a mode and click "Run Signal Engine" to analyze current market conditions against v3.4 rules.</span>
+  <span style="color:var(--text3)">Select a mode and click "Run Signal Engine" to analyze current market conditions against v3.5 rules.</span>
 </div>
 <div class="aise-meta" id="aise-meta" style="display:none">
   <span id="aise-meta-mode"></span>
@@ -2210,7 +2209,7 @@ async function runAISE() {
   btn.disabled = true;
   btn.textContent = 'Running...';
   status.textContent = 'Calling Claude API...';
-  output.innerHTML = '<div class="aise-loading"><div class="dot"></div>Analyzing market data against v3.4 rules...</div>';
+  output.innerHTML = '<div class="aise-loading"><div class="dot"></div>Analyzing market data against v3.5 rules...</div>';
 
   try {
     const resp = await fetch(AISE_URL, {
@@ -2359,29 +2358,29 @@ function renderFallbackInsights() {
   const oil = liveData.brentYahoo || (liveData.wti ? parseFloat(liveData.wti) : null);
 
   if (ust !== null && ust >= 4.60) {
-    insights.push({ type: 'action', urgency: 'high', title: '10Y at ' + ust.toFixed(2) + '% — ADD TLT puts', body: 'Yield has crossed the 4.60% ADD threshold. Japan doom loop accelerating.', rule: 'v3.4: ADD TLT puts ≥4.60%' });
+    insights.push({ type: 'action', urgency: 'high', title: '10Y at ' + ust.toFixed(2) + '% — ADD TLT puts', body: 'Yield has crossed the 4.60% ADD threshold. Japan doom loop accelerating.', rule: 'v3.5: ADD TLT puts ≥4.60%' });
   } else if (ust !== null && ust >= 4.42) {
-    insights.push({ type: 'watch', urgency: 'medium', title: '10Y approaching ADD zone (' + ust.toFixed(2) + '%)', body: (4.60 - ust).toFixed(2) + '% away from TLT put ADD threshold.', rule: 'v3.4: ADD TLT ≥4.60 | SPIRAL ≥4.70' });
+    insights.push({ type: 'watch', urgency: 'medium', title: '10Y approaching ADD zone (' + ust.toFixed(2) + '%)', body: (4.60 - ust).toFixed(2) + '% away from TLT put ADD threshold.', rule: 'v3.5: ADD TLT ≥4.60 | SPIRAL ≥4.70' });
   }
 
   if (oe !== null && oe >= 75) {
-    insights.push({ type: 'warning', urgency: 'high', title: 'Ops-end Jun 30 at ' + oe + '%', body: 'Approaching 80% trim trigger. Need all 3 conditions + 24h hold.', rule: 'v3.4: EXIT at 80% held 24h' });
+    insights.push({ type: 'warning', urgency: 'high', title: 'Ops-end Jun 30 at ' + oe + '%', body: 'Approaching 80% trim trigger. Need all 3 conditions + 24h hold.', rule: 'v3.5: EXIT at 80% held 24h' });
   }
 
   if (jpy !== null && oil !== null) {
     const comp = Math.round(jpy * oil);
     if (comp > 15500) {
-      insights.push({ type: 'warning', urgency: 'medium', title: 'USDJPY×Oil composite: ' + comp.toLocaleString(), body: 'Above 15,500 stress threshold. Japan doom loop active.', rule: 'v3.4: STRESS >15,500 | CRITICAL >155' });
+      insights.push({ type: 'warning', urgency: 'medium', title: 'USDJPY×Oil composite: ' + comp.toLocaleString(), body: 'Above 15,500 stress threshold. Japan doom loop active.', rule: 'v3.5: STRESS >15,500 | CRITICAL >155' });
     }
   }
 
   const dow = new Date().getDay();
   if (dow === 5 || dow === 6 || dow === 0 || dow === 1) {
-    insights.push({ type: 'info', urgency: 'low', title: 'TACO filter elevated', body: 'Weekend/Monday psyop window. Highest skepticism for oil-negative news.', rule: 'v3.4: Fri PM + Mon AM highest TACO risk' });
+    insights.push({ type: 'info', urgency: 'low', title: 'TACO filter elevated', body: 'Weekend/Monday psyop window. Highest skepticism for oil-negative news.', rule: 'v3.5: Fri PM + Mon AM highest TACO risk' });
   }
 
   if (!insights.length) {
-    insights.push({ type: 'info', urgency: 'low', title: 'No triggers breached', body: 'All v3.4 indicators within normal ranges. Hold full size.', rule: 'v3.4 deleveraging: requires ALL 3 simultaneously' });
+    insights.push({ type: 'info', urgency: 'low', title: 'No triggers breached', body: 'All v3.5 indicators within normal ranges. Hold full size.', rule: 'v3.5 deleveraging: requires ALL 3 simultaneously' });
   }
 
   renderInsights(insights);

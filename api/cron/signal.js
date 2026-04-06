@@ -198,8 +198,8 @@ async function generateSignals(apiKey, positions, liveData) {
     const { fileURLToPath } = await import('node:url');
     const { dirname, join } = await import('node:path');
     const dir = dirname(fileURLToPath(import.meta.url));
-    rules = readFileSync(join(dir, '../../rules/v3.4.md'), 'utf-8');
-    rulesVersion = 'v3.4';
+    rules = readFileSync(join(dir, '../../rules/v3.5.md'), 'utf-8');
+    rulesVersion = 'v3.5';
   }
 
   const context = `
@@ -276,7 +276,7 @@ const DEFAULT_POSITIONS = [
   { ticker: 'GUSH', qty: 400, avg: 36.155, label: '2x oil E&P', type: 'stock' },
   { ticker: 'USO', qty: 125, avg: 111.602, label: 'WTI crude', type: 'stock' },
   { ticker: 'OILK', qty: 200, avg: 56.038, label: 'Roll-efficient oil', type: 'stock' },
-  { ticker: 'SQQQ', qty: 100, avg: 78.985, label: 'Short QQQ 3x', type: 'stock' },
+  { ticker: 'SQQQ', qty: 100, avg: 78.985, label: 'Short QQQ 3x (structural)', type: 'stock' },
   { ticker: 'NTR', qty: 40, avg: 74.815, label: 'Diversified fert.', type: 'stock' },
   { ticker: 'CANE', qty: 200, avg: 10.485, label: 'Sugar ETF', type: 'stock' },
   { ticker: 'FRO', qty: 75, avg: 22.50, label: 'Tanker (Frontline)', type: 'stock' },

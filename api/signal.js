@@ -43,22 +43,23 @@ LIVE MARKET DATA (as of ${new Date().toISOString()}):
 - BTC: ${liveData.btc || 'n/a'}
 - WTI (@107 perp): ${liveData.wti || 'n/a'}
 - Gold: ${liveData.gold || 'n/a'}
-- T1: Military action Mar 31: ${liveData.militaryAction ?? 'n/a'}% | Iran mil vs Israel: 100%
+- T1: Military action: ${liveData.militaryAction ?? 'n/a'}%
 - T1: Hormuz normal Apr 15: ${liveData.hormuz ?? 'n/a'}% (sell FRO if >40%)
-- T2: Ceasefire Apr 7: ${liveData.mar31Ceasefire ?? 'n/a'}% (FLAG 40% | STAGE 50% | TRIM 60%)
-- T2: Ops-end Jun 30: ${liveData.opsEnd ?? 'n/a'}% (trim trigger at 80%)
-- T2: US forces enter Iran Apr 30: rising — smart money YES
-- T3: Ceasefire Dec 31: ${liveData.ceasefire ?? 'n/a'}% (9-month cumulative — NEVER trim on this)
-- 10Y UST yield: ${liveData.ust10y ?? 'n/a'}% (ADD TLT ≥4.60, SPIRAL ≥4.70, 20Y hit 5.00%)
+- T2: Ceasefire Apr 7: ${liveData.mar31Ceasefire ?? 'n/a'}% (resolved at 2% — war confirmed)
+- T2: Ops-end Jun 30: ${liveData.opsEnd ?? 'n/a'}% (trim trigger at 80% held 24h)
+- T2: US forces enter Iran Apr 30: rising — $2M insider cluster YES
+- T3: Ceasefire Dec 31: ${liveData.ceasefire ?? 'n/a'}% (cumulative — NEVER trim on this)
+- 10Y UST yield: ${liveData.ust10y ?? 'n/a'}% (ADD TLT ≥4.60, SPIRAL ≥4.70)
 - USDJPY: ${liveData.usdjpy ?? 'n/a'} (STRESS if USDJPY×Oil >15,500)
 - T2: Ceasefire before Trump-Xi May 14: 59% — KEY SIGNAL (real deal window ~May 1-7)
 - SPR swap ceiling: $110-115 (Wright rolling structure, NOT depleting)
-- Apr 6 deadline: Trump energy pause expires 8pm ET. Most likely: extension.
-- IRGC navy commander Tangsiri killed Mar 26 — enforcement chain disrupted
-- Japan doom loop ACTIVATED: 10Y 2.37% (1999 high), USDJPY 159.9, composite 16,630 (>15,500)
-- BOJ Apr 28 = next doom loop accelerant (25bp hike priced in)
-- DB Pressure Index: RECORD HIGH — TACO psyop filter on MAX
+- Apr 6 ENERGY PAUSE EXPIRED — FULL REVIEW. Most likely: extension (TACO x9).
+- Japan doom loop ACTIVATED: BOJ Apr 28 = doom loop accelerant (25bp hike to 1%)
+- DB Pressure Index: RECORD HIGH — TACO psyop filter on MAX (confirmed x9)
 - Petrodollar erosion: yuan toll booth codified into Iranian law, mBridge $55B operational
+- STRUCTURAL HOLDS: SQQQ, NTR, TLT puts, FRO, CANE — survive ceasefire, do NOT trim
+- TRIM requires ALL 3 original + 2 of 3 TACO-proof signals
+- ONGOING: China MOFCOM urea quota, India IPL tenders, @PolymarketHistory daily (2-3 day lead)
 
 POSITIONS:
 ${positions.map(p => {
